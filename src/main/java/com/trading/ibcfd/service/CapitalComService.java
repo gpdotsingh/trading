@@ -44,22 +44,47 @@ public class CapitalComService {
     }
 
     public String openPositionWithSize(String ticker, String direction, double size) {
+        return openPositionWithSize(ticker, direction, size, 0, 0);
+    }
+
+    public String openPositionWithSize(String ticker, String direction, double size,
+                                       double stopDistance, double limitDistance) {
         session.ensureSession();
         CapitalComConfig.SymbolMapping mapping = resolveMapping(ticker);
         if (mapping == null) throw new IllegalArgumentException(
                 "No Capital.com epic mapped for ticker '" + ticker + "'");
 
-        Map<String, Object> body = Map.of(
-                "epic",           mapping.getEpic(),
-                "direction",      direction.toUpperCase(),
-                "size",           size,
-                "guaranteedStop", false);
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("epic",           mapping.getEpic());
+        body.put("direction",      direction.toUpperCase());
+        body.put("size",           size);
+        body.put("guaranteedStop", false);
+        if (stopDistance  > 0) body.put("stopDistance",  stopDistance);
+        if (limitDistance > 0) body.put("limitDistance", limitDistance);
 
-        log.info("Capital.com OPEN {} {} (epic={} size={})", direction, ticker, mapping.getEpic(), size);
+        log.info("Capital.com OPEN {} {} (epic={} size={} SL_dist={} TP_dist={})",
+                direction, ticker, mapping.getEpic(), size, stopDistance, limitDistance);
         Map<String, Object> response = session.post("/api/v1/positions", body);
         String dealRef = response != null ? str(response.get("dealReference")) : "";
         log.info("Capital.com position opened: dealReference={}", dealRef);
         return dealRef;
+    }
+
+    /** Returns current bid/offer for an epic — used for stop loss calculation. */
+    @SuppressWarnings("unchecked")
+    public double getCurrentMidPrice(String epic) {
+        session.ensureSession();
+        Map<String, Object> resp = session.get("/api/v1/markets/" + epic);
+        if (resp == null) return 0;
+        Object snapshot = resp.get("snapshot");
+        if (snapshot instanceof Map<?, ?>) {
+            Map<String, Object> snap = (Map<String, Object>) snapshot;
+            Object bid   = snap.get("bid");
+            Object offer = snap.get("offer");
+            if (bid instanceof Number b && offer instanceof Number o)
+                return (b.doubleValue() + o.doubleValue()) / 2.0;
+        }
+        return 0;
     }
 
     public String openPositionWithRisk(String ticker, String direction,

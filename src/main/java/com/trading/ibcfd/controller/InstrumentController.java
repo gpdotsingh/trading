@@ -3,6 +3,7 @@ package com.trading.ibcfd.controller;
 import com.trading.ibcfd.model.InstrumentDetails;
 import com.trading.ibcfd.service.InstrumentCatalogService;
 import com.trading.ibcfd.service.InstrumentLookup;
+import com.trading.ibcfd.service.MarketStatusService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +24,7 @@ public class InstrumentController {
 
     private final InstrumentLookup        instrumentService;
     private final InstrumentCatalogService catalogService;
+    private final MarketStatusService     marketStatusService;
 
     /**
      * GET /api/instruments/browse?keywords=oil&assetTypes=CfdOnFutures&top=20&skip=0
@@ -143,6 +145,26 @@ public class InstrumentController {
             }
         }
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * GET /api/instruments/status/{ticker}
+     * Live market state (Open/Closed/Tradeable) + trading hours from Saxo and Capital.com.
+     */
+    @GetMapping("/status/{ticker}")
+    @Operation(summary = "Live market status and trading hours for a ticker")
+    public ResponseEntity<Map<String, Object>> marketStatus(@PathVariable String ticker) {
+        return ResponseEntity.ok(marketStatusService.getStatus(ticker));
+    }
+
+    /**
+     * GET /api/instruments/status
+     * Market status for every ticker configured in the symbol map.
+     */
+    @GetMapping("/status")
+    @Operation(summary = "Live market status for all configured tickers")
+    public ResponseEntity<Map<String, Object>> allMarketStatuses() {
+        return ResponseEntity.ok(marketStatusService.getAllStatuses());
     }
 
     // ── helper ───────────────────────────────────────────────────────────────────

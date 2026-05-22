@@ -42,4 +42,10 @@ public class OrderRequest {
 
     /** Required when orderType = STP */
     private double stopPrice;
+
+    /** Absolute stop-loss price — 0 means no stop loss */
+    private double stopLossPrice;
+
+    /** Absolute take-profit price — 0 means no take profit */
+    private double takeProfitPrice;
 }

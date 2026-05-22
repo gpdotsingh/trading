@@ -57,8 +57,41 @@ public class OrderService {
             body.put("OrderPrice", req.getStopPrice());
         }
 
-        log.info("Placing Saxo order: {} {} {} UIC={} type={}",
-                req.getAction(), req.getQuantity(), req.getSymbol(), uic, req.getOrderType());
+        // Related stop-loss / take-profit orders placed simultaneously
+        String reverseSide = req.getAction().equalsIgnoreCase("BUY") ? "Sell" : "Buy";
+        java.util.List<Map<String, Object>> relatedOrders = new java.util.ArrayList<>();
+        if (req.getStopLossPrice() > 0) {
+            Map<String, Object> sl = new HashMap<>();
+            sl.put("AccountKey",  config.getAccountKey());
+            sl.put("AssetType",   assetType);
+            sl.put("Uic",         uic);
+            sl.put("BuySell",     reverseSide);
+            sl.put("Amount",      req.getQuantity());
+            sl.put("OrderType",   "StopIfTraded");
+            sl.put("OrderPrice",  req.getStopLossPrice());
+            sl.put("ManualOrder", false);
+            sl.put("Duration",    Map.of("DurationType", "GoodTillCancel"));
+            relatedOrders.add(sl);
+        }
+        if (req.getTakeProfitPrice() > 0) {
+            Map<String, Object> tp = new HashMap<>();
+            tp.put("AccountKey",  config.getAccountKey());
+            tp.put("AssetType",   assetType);
+            tp.put("Uic",         uic);
+            tp.put("BuySell",     reverseSide);
+            tp.put("Amount",      req.getQuantity());
+            tp.put("OrderType",   "Limit");
+            tp.put("OrderPrice",  req.getTakeProfitPrice());
+            tp.put("ManualOrder", false);
+            tp.put("Duration",    Map.of("DurationType", "GoodTillCancel"));
+            relatedOrders.add(tp);
+        }
+        if (!relatedOrders.isEmpty()) body.put("Orders", relatedOrders);
+
+        log.info("Placing Saxo order: {} {} {} UIC={} type={} SL={} TP={}",
+                req.getAction(), req.getQuantity(), req.getSymbol(), uic, req.getOrderType(),
+                req.getStopLossPrice() > 0 ? req.getStopLossPrice() : "none",
+                req.getTakeProfitPrice() > 0 ? req.getTakeProfitPrice() : "none");
 
         String url = config.getBaseUrl() + "/trade/v2/orders";
         Map<String, Object> response = restTemplate.postForObject(url, body, Map.class);
@@ -75,6 +108,44 @@ public class OrderService {
                 .status("PLACED")
                 .message("Order placed on Saxo simulation")
                 .build();
+    }
+
+    /**
+     * Find the active StopIfTraded order for a symbol and update its price.
+     * Used by DynamicStopLossService when the trailing stop moves.
+     */
+    @SuppressWarnings("unchecked")
+    public void updateStopOrder(String symbol, String assetType, double newStopPrice) {
+        int uic = instrumentService.findUic(symbol, assetType);
+        String listUrl = config.getBaseUrl() + "/port/v1/orders?AccountKey=" + config.getAccountKey()
+                + "&FieldGroups=DisplayAndFormat";
+        Map<String, Object> resp = restTemplate.getForObject(listUrl, Map.class);
+        if (resp == null || !(resp.get("Data") instanceof java.util.List<?> data)) return;
+
+        for (Object item : data) {
+            if (!(item instanceof Map<?, ?> order)) continue;
+            Map<String, Object> o = (Map<String, Object>) order;
+            if (!"StopIfTraded".equals(o.get("OpenOrderType"))) continue;
+            Object oUic = o.get("Uic");
+            if (!(oUic instanceof Number) || ((Number) oUic).intValue() != uic) continue;
+
+            String stopOrderId = str(o.get("OrderId"));
+            if (stopOrderId.isBlank()) continue;
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("AccountKey", config.getAccountKey());
+            body.put("OrderId",    stopOrderId);
+            body.put("OrderType",  "StopIfTraded");
+            body.put("OrderPrice", newStopPrice);
+            body.put("AssetType",  assetType);
+            body.put("Uic",        uic);
+
+            String putUrl = config.getBaseUrl() + "/trade/v2/orders/" + stopOrderId;
+            restTemplate.put(putUrl, body);
+            log.info("Saxo stop order {} updated to {}", stopOrderId, newStopPrice);
+            return;
+        }
+        log.debug("No active StopIfTraded order found for symbol={} uic={}", symbol, uic);
     }
 
     /**

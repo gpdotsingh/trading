@@ -1,11 +1,15 @@
 package com.trading.ibcfd.broker;
 
+import com.trading.ibcfd.config.TradingRiskConfig;
 import com.trading.ibcfd.config.TrendSpiderSymbolConfig;
 import com.trading.ibcfd.config.TrendSpiderSymbolConfig.SymbolMapping;
 import com.trading.ibcfd.model.InstrumentDetails;
+import com.trading.ibcfd.model.MarketPrice;
 import com.trading.ibcfd.model.OrderRequest;
 import com.trading.ibcfd.service.InstrumentLookup;
+import com.trading.ibcfd.service.MarketDataService;
 import com.trading.ibcfd.service.OrderService;
+import com.trading.ibcfd.service.StopLossCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,6 +24,9 @@ public class SaxoBrokerGateway implements BrokerGateway {
     private final OrderService            orderService;
     private final TrendSpiderSymbolConfig symbolConfig;
     private final InstrumentLookup        instrumentLookup;
+    private final MarketDataService       marketDataService;
+    private final StopLossCalculator      stopLossCalculator;
+    private final TradingRiskConfig       riskConfig;
 
     @Override
     public String brokerName() { return "SAXO"; }
@@ -31,9 +38,23 @@ public class SaxoBrokerGateway implements BrokerGateway {
 
     @Override
     public PlaceResult place(String tickerOrSymbol, String action, double requestedQty) throws Exception {
-        SymbolMapping m = resolve(tickerOrSymbol);
-        double qty = effectiveQty(m, requestedQty);
-        String note = buildNote(m, requestedQty, qty);
+        SymbolMapping m   = resolve(tickerOrSymbol);
+        double qty        = effectiveQty(m, requestedQty);
+        String note       = buildNote(m, requestedQty, qty);
+        double slPrice    = 0;
+        double tpPrice    = 0;
+
+        double entryPrice = 0;
+        if (riskConfig.isEnabled()) {
+            entryPrice = fetchEntryPrice(m.getSaxoSymbol(), m.getAssetType(), action);
+            if (entryPrice > 0) {
+                slPrice = stopLossCalculator.stopLossPrice(action, entryPrice);
+                tpPrice = stopLossCalculator.takeProfitPrice(action, entryPrice);
+                log.info("Saxo risk: entry={} SL={} TP={} ({}% / {}%)",
+                        entryPrice, slPrice, tpPrice,
+                        riskConfig.getStopLossPct(), riskConfig.getTakeProfitPct());
+            }
+        }
 
         OrderRequest req = OrderRequest.builder()
                 .symbol(m.getSaxoSymbol())
@@ -41,10 +62,22 @@ public class SaxoBrokerGateway implements BrokerGateway {
                 .quantity(qty)
                 .assetType(m.getAssetType())
                 .orderType("MKT")
+                .stopLossPrice(slPrice)
+                .takeProfitPrice(tpPrice)
                 .build();
         var r = orderService.placeOrder(req);
         log.info("Saxo order placed: {} {} qty={} orderId={}", action, tickerOrSymbol, qty, r.getOrderId());
-        return new PlaceResult(r.getOrderId(), m.getSaxoSymbol(), m.getAssetType(), qty, note);
+        return new PlaceResult(r.getOrderId(), m.getSaxoSymbol(), m.getAssetType(), qty, note, entryPrice);
+    }
+
+    private double fetchEntryPrice(String saxoSymbol, String assetType, String action) {
+        try {
+            MarketPrice mp = marketDataService.getMarketPrice(saxoSymbol, assetType);
+            return "BUY".equalsIgnoreCase(action) ? mp.getAsk() : mp.getBid();
+        } catch (Exception e) {
+            log.warn("Could not fetch entry price for {} — stop loss skipped: {}", saxoSymbol, e.getMessage());
+            return 0;
+        }
     }
 
     /** Fetch minimum trade size for a symbol — used by the UI to show the hint. */

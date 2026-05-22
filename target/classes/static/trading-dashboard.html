@@ -468,13 +468,16 @@
     </div>
   </div>
 
-  <!-- Row 5: Symbol map -->
+  <!-- Row 5: Symbol map + Market Status -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-header">
       <span class="card-title">TrendSpider → Saxo Symbol Map</span>
-      <span class="card-count" id="mapCount">0 aliases</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="loadMarketStatus()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px">⟳ Market Status</button>
+        <span class="card-count" id="mapCount">0 aliases</span>
+      </div>
     </div>
-    <div class="tbl-wrap" style="max-height:220px">
+    <div class="tbl-wrap" style="max-height:260px">
       <table>
         <thead>
           <tr>
@@ -482,12 +485,71 @@
             <th>Saxo Instrument</th>
             <th>Asset Type</th>
             <th>Quantity</th>
+            <th>Saxo Status</th>
+            <th>Capital Status</th>
+            <th>Trading Hours (Capital)</th>
           </tr>
         </thead>
         <tbody id="symbolMapBody">
-          <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+          <tr class="empty-row"><td colspan="7">Loading…</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Scheduled Orders -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">Scheduled Orders</span>
+      <span class="card-count" id="scheduledCount">0</span>
+    </div>
+    <div class="card-body">
+      <!-- Create form -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #21262d">
+        <div>
+          <div style="font-size:10px;color:#8b949e;margin-bottom:4px;text-transform:uppercase">Ticker</div>
+          <input id="sch-ticker" placeholder="e.g. GOLD" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:12px;width:100px">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#8b949e;margin-bottom:4px;text-transform:uppercase">Action</div>
+          <select id="sch-action" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:12px">
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#8b949e;margin-bottom:4px;text-transform:uppercase">Quantity</div>
+          <input id="sch-qty" type="number" min="0" step="any" placeholder="Default" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:12px;width:90px">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#8b949e;margin-bottom:4px;text-transform:uppercase">Broker</div>
+          <select id="sch-broker" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:12px">
+            <option value="auto">Auto</option>
+            <option value="saxo">Saxo</option>
+            <option value="capital">Capital.com</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#8b949e;margin-bottom:4px;text-transform:uppercase">Date &amp; Time (local)</div>
+          <input id="sch-at" type="datetime-local" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:12px">
+        </div>
+        <button onclick="createScheduledOrder()" style="background:#1f6feb;border:1px solid #388bfd;color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">+ Schedule</button>
+        <div id="sch-msg" style="font-size:11px;color:#8b949e"></div>
+      </div>
+      <!-- Table -->
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Ticker</th><th>Action</th><th>Qty</th><th>Broker</th><th>Fires At</th><th>Created</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="scheduledBody">
+            <tr class="empty-row"><td colspan="9">No scheduled orders</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1351,16 +1413,76 @@
       Object.entries(grouped).forEach(([saxo, aliases]) => {
         aliases.forEach((row, i) => {
           const color = assetColors[row.assetType] || '#8b949e';
-          html += `<tr>
-            <td><code style="background:#0d1117;border:1px solid #30363d;padding:1px 7px;border-radius:4px;font-size:12px;color:#79c0ff">${row.trendSpiderTicker}</code></td>
+          const t = row.trendSpiderTicker;
+          html += `<tr id="map-row-${t}">
+            <td><code style="background:#0d1117;border:1px solid #30363d;padding:1px 7px;border-radius:4px;font-size:12px;color:#79c0ff">${t}</code></td>
             <td>${i === 0 ? '<strong>' + saxo + '</strong>' : '<span style="color:#6e7681">↳ alias</span>'}</td>
             <td><span style="color:${color};font-size:12px">${row.assetType}</span></td>
             <td>${row.quantity}</td>
+            <td id="ms-saxo-${t}"><span style="color:#6e7681;font-size:11px">—</span></td>
+            <td id="ms-cap-${t}"><span style="color:#6e7681;font-size:11px">—</span></td>
+            <td id="ms-hours-${t}" style="font-size:10px;color:#8b949e;max-width:180px;white-space:normal">—</td>
           </tr>`;
         });
       });
       tb.innerHTML = html;
     } catch(e) { console.error('symbolMap', e); }
+  }
+
+  // ── Market Status ──────────────────────────────────────────────────────
+  let _marketStatusCache = {};
+
+  async function loadMarketStatus() {
+    try {
+      const r = await fetch('/api/instruments/status');
+      if (!r.ok) return;
+      _marketStatusCache = await r.json();
+      renderMarketStatus();
+    } catch(e) { console.error('marketStatus', e); }
+  }
+
+  function renderMarketStatus() {
+    Object.entries(_marketStatusCache).forEach(([ticker, data]) => {
+      const saxoCell  = document.getElementById(`ms-saxo-${ticker}`);
+      const capCell   = document.getElementById(`ms-cap-${ticker}`);
+      const hoursCell = document.getElementById(`ms-hours-${ticker}`);
+      if (!saxoCell) return;
+
+      // Saxo status
+      const saxo = data.saxo || {};
+      if (saxo.error) {
+        saxoCell.innerHTML = `<span style="color:#f85149;font-size:11px">Error</span>`;
+      } else if (saxo.marketState) {
+        const open = saxo.tradeable;
+        const col  = open ? '#3fb950' : '#f85149';
+        saxoCell.innerHTML = `<span style="color:${col};font-size:11px">⬤ ${saxo.marketState}</span>`;
+      }
+
+      // Capital status
+      const cap = data.capital || {};
+      if (cap.error) {
+        capCell.innerHTML = `<span style="color:#f85149;font-size:11px">Error</span>`;
+      } else if (cap.marketStatus) {
+        const open = cap.tradeable;
+        const col  = open ? '#3fb950' : '#f85149';
+        capCell.innerHTML = `<span style="color:${col};font-size:11px">⬤ ${cap.marketStatus}</span>`;
+      }
+
+      // Trading hours from Capital openingHours
+      if (cap.openingHours) {
+        const days = ['mon','tue','wed','thu','fri','sat','sun'];
+        const parts = days
+          .filter(d => cap.openingHours[d]?.length)
+          .map(d => {
+            const sessions = cap.openingHours[d].map(s => `${s.openTime}–${s.closeTime}`).join(', ');
+            return `<span style="color:#8b949e">${d}:</span> ${sessions}`;
+          });
+        const zone = cap.openingHours.zone ? ` <span style="color:#6e7681">(${cap.openingHours.zone})</span>` : '';
+        hoursCell.innerHTML = parts.join(' &nbsp;|&nbsp; ') + zone || '—';
+      } else if (saxo.exchangeId) {
+        hoursCell.innerHTML = `<span style="color:#6e7681">Exchange: ${saxo.exchangeId}</span>`;
+      }
+    });
   }
 
   // ── Order History ──────────────────────────────────────────────────────
@@ -1465,6 +1587,89 @@
     document.getElementById('orderHistoryCount').textContent = totalCount + ' entries';
   }
 
+  // ── Scheduled Orders ──────────────────────────────────────────────────
+  async function loadScheduledOrders() {
+    try {
+      const r = await fetch('/api/trade/scheduled');
+      if (!r.ok) return;
+      const orders = await r.json();
+      const tb = document.getElementById('scheduledBody');
+      document.getElementById('scheduledCount').textContent = orders.length;
+      if (!orders.length) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="9">No scheduled orders</td></tr>';
+        return;
+      }
+      tb.innerHTML = orders.map(o => {
+        const firesAt  = new Date(o.scheduledAt).toLocaleString();
+        const created  = new Date(o.createdAt).toLocaleString();
+        const isPending = o.status === 'PENDING';
+        const statusColor = o.status === 'FIRED' ? '#3fb950'
+                          : o.status === 'FAILED' || o.status === 'CANCELLED' ? '#f85149'
+                          : '#58a6ff';
+        const actionColor = o.action === 'BUY' ? '#3fb950' : '#f85149';
+        const cancelBtn = isPending
+          ? `<button onclick="cancelScheduled('${o.id}')" style="background:#3d0f0f;border:1px solid #da3633;color:#f85149;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px">Cancel</button>`
+          : '';
+        return `<tr>
+          <td style="font-family:monospace;font-size:11px;color:#8b949e">${o.id}</td>
+          <td><code style="background:#0d1117;border:1px solid #30363d;padding:1px 6px;border-radius:4px;font-size:11px;color:#79c0ff">${o.ticker}</code></td>
+          <td style="color:${actionColor};font-weight:700">${o.action}</td>
+          <td>${o.quantity > 0 ? o.quantity : '<span style="color:#6e7681">default</span>'}</td>
+          <td style="font-size:11px;color:#8b949e">${o.broker || 'auto'}</td>
+          <td style="font-size:11px">${firesAt}</td>
+          <td style="font-size:11px;color:#6e7681">${created}</td>
+          <td><span style="background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600">${o.status}</span>${o.failReason ? `<div style="font-size:10px;color:#f85149;margin-top:2px">${o.failReason}</div>` : ''}</td>
+          <td>${cancelBtn}</td>
+        </tr>`;
+      }).join('');
+    } catch(e) { console.error('scheduledOrders', e); }
+  }
+
+  async function createScheduledOrder() {
+    const ticker = document.getElementById('sch-ticker').value.trim().toUpperCase();
+    const action = document.getElementById('sch-action').value;
+    const qty    = parseFloat(document.getElementById('sch-qty').value) || 0;
+    const broker = document.getElementById('sch-broker').value;
+    const atLocal = document.getElementById('sch-at').value;
+    const msg    = document.getElementById('sch-msg');
+
+    if (!ticker) { msg.style.color = '#f85149'; msg.textContent = 'Enter a ticker'; return; }
+    if (!atLocal) { msg.style.color = '#f85149'; msg.textContent = 'Pick a date & time'; return; }
+
+    const scheduledAt = new Date(atLocal).toISOString();
+    if (new Date(scheduledAt) <= new Date()) {
+      msg.style.color = '#f85149'; msg.textContent = 'Time must be in the future'; return;
+    }
+
+    msg.style.color = '#8b949e'; msg.textContent = 'Scheduling…';
+    try {
+      const body = { ticker, action, broker, scheduledAt };
+      if (qty > 0) body.quantity = qty;
+      const r = await fetch('/api/trade/scheduled', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.error) { msg.style.color = '#f85149'; msg.textContent = d.error; return; }
+      msg.style.color = '#3fb950';
+      msg.textContent = `Scheduled ${d.id}: ${action} ${ticker} at ${new Date(scheduledAt).toLocaleString()}`;
+      document.getElementById('sch-ticker').value = '';
+      document.getElementById('sch-qty').value    = '';
+      document.getElementById('sch-at').value     = '';
+      loadScheduledOrders();
+    } catch(e) { msg.style.color = '#f85149'; msg.textContent = e.message; }
+  }
+
+  async function cancelScheduled(id) {
+    if (!confirm(`Cancel scheduled order ${id}?`)) return;
+    try {
+      const r = await fetch(`/api/trade/scheduled/${id}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (d.error) { alert(d.error); return; }
+      loadScheduledOrders();
+    } catch(e) { alert(e.message); }
+  }
+
   // ── Refresh all ────────────────────────────────────────────────────────
   async function refreshAll() {
     document.getElementById('lastUpdate').textContent = 'Refreshing…';
@@ -1475,7 +1680,8 @@
       loadAccount(), loadAlerts(),
       loadSymbolMap(),
       loadCapitalPositions(), loadCapitalAccount(),
-      loadOrderHistory()
+      loadOrderHistory(),
+      loadScheduledOrders()
     ]);
     document.getElementById('lastUpdate').textContent =
       'Updated ' + new Date().toLocaleTimeString();
