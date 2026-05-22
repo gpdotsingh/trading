@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trading Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header h1 { font-size: 17px; font-weight: 600; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #f85149; display: inline-block; }
+    .dot.on { background: #3fb950; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .conn-label { font-size: 12px; color: #8b949e; display: flex; align-items: center; gap: 6px; }
+    .refresh-btn {
+      background: #21262d; border: 1px solid #30363d; color: #e6edf3;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+    .refresh-btn:hover { background: #30363d; }
+    .last-update { font-size: 11px; color: #6e7681; }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .page { max-width: 1400px; margin: 0 auto; padding: 20px 20px; }
+
+    /* ── Stat bar ───────────────────────────────────────────────── */
+    .stat-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+    }
+    .stat-card {
+      background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+      padding: 16px 20px;
+    }
+    .stat-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .stat-value { font-size: 24px; font-weight: 700; }
+    .stat-value.green { color: #3fb950; }
+    .stat-value.red   { color: #f85149; }
+    .stat-value.blue  { color: #79c0ff; }
+    .stat-sub { font-size: 12px; color: #6e7681; margin-top: 4px; }
+
+    /* ── Grid ───────────────────────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media(max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } .stat-bar { grid-template-columns: 1fr 1fr; } }
+
+    /* ── Widget card ─────────────────────────────────────────────── */
+    .card {
+      background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow: hidden;
+    }
+    .card-header {
+      padding: 14px 18px; border-bottom: 1px solid #30363d;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #8b949e; }
+    .card-count { font-size: 11px; background: #21262d; border: 1px solid #30363d; padding: 2px 8px; border-radius: 10px; color: #8b949e; }
+    .card-body { padding: 0; }
+
+    /* ── Table ───────────────────────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th {
+      background: #0d1117; padding: 9px 14px; text-align: left;
+      font-size: 11px; color: #8b949e; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .04em; position: sticky; top: 0; z-index: 1;
+    }
+    td { padding: 9px 14px; border-bottom: 1px solid #21262d; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1c2128; }
+    .empty-row td { color: #6e7681; font-style: italic; text-align: center; padding: 24px; }
+
+    /* ── Badges ─────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    }
+    .badge-buy    { background: #0f3d1a; color: #3fb950; border: 1px solid #238636; }
+    .badge-sell   { background: #3d0f0f; color: #f85149; border: 1px solid #da3633; }
+    .badge-hold   { background: #2d2a12; color: #e3b341; border: 1px solid #9e6a03; }
+    .badge-placed { background: #0f3d1a; color: #3fb950; border: 1px solid #238636; }
+    .badge-failed { background: #3d0f0f; color: #f85149; border: 1px solid #da3633; }
+    .badge-ts     { background: #0f2a3d; color: #79c0ff; border: 1px solid #1f6feb; }
+    .badge-manual { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+    .badge-long   { background: #0f3d1a; color: #3fb950; }
+    .badge-short  { background: #3d0f0f; color: #f85149; }
+
+    /* ── MFI gauge ───────────────────────────────────────────────── */
+    .mfi-wrap { display: flex; align-items: center; gap: 8px; }
+    .mfi-bar-outer {
+      width: 60px; height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; flex-shrink: 0;
+    }
+    .mfi-bar-inner { height: 100%; border-radius: 3px; transition: width .3s; }
+    .mfi-val { font-size: 12px; font-weight: 600; min-width: 32px; }
+    .mfi-over  { color: #f85149; }
+    .mfi-under { color: #3fb950; }
+    .mfi-mid   { color: #e3b341; }
+    .mfi-none  { color: #6e7681; }
+
+    /* ── PnL colouring ───────────────────────────────────────────── */
+    .pnl-pos { color: #3fb950; font-weight: 600; }
+    .pnl-neg { color: #f85149; font-weight: 600; }
+    .pnl-zero{ color: #8b949e; }
+
+    /* ── Account detail list ─────────────────────────────────────── */
+    .kv-list { padding: 16px 18px; }
+    .kv-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #21262d; font-size: 13px; }
+    .kv-row:last-child { border-bottom: none; }
+    .kv-key   { color: #8b949e; }
+    .kv-value { font-weight: 600; }
+
+    /* ── Alert feed ──────────────────────────────────────────────── */
+    .alert-feed { max-height: 340px; overflow-y: auto; }
+    .alert-item {
+      padding: 12px 18px; border-bottom: 1px solid #21262d;
+      display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start;
+    }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-item:hover { background: #1c2128; }
+    .alert-time { font-size: 11px; color: #6e7681; margin-top: 1px; white-space: nowrap; }
+    .alert-body { flex: 1; }
+    .alert-ticker { font-size: 13px; font-weight: 700; }
+    .alert-name   { font-size: 11px; color: #8b949e; margin-top: 2px; }
+    .alert-indicators { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+    .ind-chip {
+      font-size: 10px; padding: 1px 7px; border-radius: 8px;
+      background: #21262d; border: 1px solid #30363d; color: #8b949e;
+    }
+    .ind-chip span { font-weight: 700; }
+    .alert-price { font-size: 13px; font-weight: 600; color: #79c0ff; text-align: right; white-space: nowrap; }
+
+    /* ── Filter tabs ─────────────────────────────────────────────── */
+    .tab-row { display: flex; gap: 6px; padding: 10px 18px; border-bottom: 1px solid #30363d; }
+    .tab {
+      padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent; color: #8b949e;
+    }
+    .tab:hover { background: #21262d; }
+    .tab.active { background: #1f6feb22; border-color: #1f6feb; color: #79c0ff; }
+
+    /* ── Exposure bars ───────────────────────────────────────────── */
+    .exposure-list { padding: 12px 18px; }
+    .exp-row { margin-bottom: 12px; }
+    .exp-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+    .exp-sym   { color: #e6edf3; font-weight: 600; }
+    .exp-val   { color: #8b949e; }
+    .exp-bar-outer { height: 5px; background: #21262d; border-radius: 3px; }
+    .exp-bar-inner { height: 100%; background: #1f6feb; border-radius: 3px; }
+
+    /* ── Pie legend ─────────────────────────────────────────────── */
+    .pie-wrap { padding: 16px 18px; display: flex; gap: 24px; align-items: center; }
+    .pie-canvas-wrap { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+    .pie-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+    .pie-center-num { font-size: 22px; font-weight: 700; }
+    .pie-center-lbl { font-size: 10px; color: #8b949e; text-transform: uppercase; letter-spacing: .05em; }
+    .pie-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .pie-leg-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .pie-leg-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .pie-leg-name { flex: 1; color: #e6edf3; }
+    .pie-leg-pnl  { font-weight: 600; font-size: 11px; white-space: nowrap; }
+    .pos-btn { padding: 3px 9px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; margin-left: 3px; }
+
+    /* ── Scrollbar ───────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ────────────────────────────────────────────────────────── -->
+<div class="header">
+  <div class="header-left">
+    <h1>Trading Dashboard</h1>
+    <div class="conn-label"><span class="dot" id="wsDot"></span><span id="wsLabel">Connecting…</span></div>
+    <span id="brokerBadge" style="font-size:11px;padding:2px 10px;border-radius:10px;background:#21262d;border:1px solid #30363d;color:#8b949e">…</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="last-update" id="lastUpdate"></span>
+    <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
+  </div>
+</div>
+
+<!-- ── Page ─────────────────────────────────────────────────────────── -->
+<div class="page">
+
+  <!-- Stat bar -->
+  <div class="stat-bar">
+    <div class="stat-card">
+      <div class="stat-label">Total Trades</div>
+      <div class="stat-value blue" id="statTotal">—</div>
+      <div class="stat-sub" id="statSub">Loading…</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">From TrendSpider</div>
+      <div class="stat-value blue" id="statTs">—</div>
+      <div class="stat-sub" id="statTsSub">auto-signals</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Unrealized P&amp;L</div>
+      <div class="stat-value" id="statUnreal">—</div>
+      <div class="stat-sub">open positions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Account Balance</div>
+      <div class="stat-value blue" id="statBalance">—</div>
+      <div class="stat-sub" id="statCcy"></div>
+    </div>
+  </div>
+
+  <!-- Row 1: Trade Journal + Account -->
+  <div class="grid-3">
+
+    <!-- Trade Journal -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Trade Journal</span>
+        <span class="card-count" id="journalCount">0 trades</span>
+      </div>
+      <div class="tab-row">
+        <div class="tab active" onclick="filterJournal('ALL',this)">All</div>
+        <div class="tab" onclick="filterJournal('TRENDSPIDER',this)">TrendSpider</div>
+        <div class="tab" onclick="filterJournal('MANUAL',this)">Manual</div>
+        <div class="tab" onclick="filterJournal('ANALYTICS',this)">Python</div>
+        <div class="tab" onclick="filterJournal('PLACED',this)">Placed</div>
+        <div class="tab" onclick="filterJournal('CLOSED',this)">Closed</div>
+        <div class="tab" onclick="filterJournal('FAILED',this)">Failed</div>
+      </div>
+      <div class="card-body">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Source</th>
+                <th>Broker</th>
+                <th>Side</th>
+                <th>Symbol</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>MFI</th>
+                <th>Alert</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="journalBody">
+              <tr class="empty-row"><td colspan="10">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- Account Summary -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Account</span></div>
+        <div class="kv-list" id="accountKv">
+          <div class="kv-row"><span class="kv-key">Loading…</span></div>
+        </div>
+      </div>
+
+      <!-- Notional Exposure -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Notional Exposure</span></div>
+        <div class="exposure-list" id="exposureList">
+          <div style="color:#6e7681;font-size:12px;padding:8px 0">No trades yet</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 2: Open Positions + Closed Positions -->
+  <div class="grid-2">
+
+    <!-- Open Positions (Saxo) -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Open Positions — Saxo</span>
+        <span class="card-count" id="openCount">0</span>
+      </div>
+      <div class="card-body">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Entry</th>
+                <th>Current</th>
+                <th>P&amp;L</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="openBody">
+              <tr class="empty-row"><td colspan="7">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Closed Positions -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Closed Positions</span>
+        <span class="card-count" id="closedCount">0</span>
+      </div>
+      <div class="card-body">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Entry</th>
+                <th>Close</th>
+                <th>Realized P&amp;L</th>
+              </tr>
+            </thead>
+            <tbody id="closedBody">
+              <tr class="empty-row"><td colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Row 3: Position Pie Charts -->
+  <div class="grid-2" style="margin-bottom:16px">
+
+    <!-- Capital.com pie -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Capital.com — Position Mix</span>
+        <span class="card-count" id="capPieCount">0 open</span>
+      </div>
+      <div class="pie-wrap">
+        <div class="pie-canvas-wrap">
+          <canvas id="capPieChart"></canvas>
+          <div class="pie-center">
+            <span class="pie-center-num" id="capPieNum">0</span>
+            <span class="pie-center-lbl">positions</span>
+          </div>
+        </div>
+        <div class="pie-legend" id="capPieLegend">
+          <div style="color:#6e7681;font-size:12px">No positions</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Saxo pie -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Saxo — Position Mix</span>
+        <span class="card-count" id="saxoPieCount">0 open</span>
+      </div>
+      <div class="pie-wrap">
+        <div class="pie-canvas-wrap">
+          <canvas id="saxoPieChart"></canvas>
+          <div class="pie-center">
+            <span class="pie-center-num" id="saxoPieNum">0</span>
+            <span class="pie-center-lbl">positions</span>
+          </div>
+        </div>
+        <div class="pie-legend" id="saxoPieLegend">
+          <div style="color:#6e7681;font-size:12px">No positions</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Row 4: Manual Trade Panel -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">Manual Trade</span>
+      <span style="font-size:11px;color:#8b949e">Place an order instantly on any mapped symbol</span>
+    </div>
+    <div style="padding:16px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+
+      <!-- Broker selector -->
+      <div>
+        <div style="font-size:11px;color:#8b949e;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Broker</div>
+        <select id="mt-broker" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:7px 12px;border-radius:6px;font-size:13px;min-width:110px">
+          <option value="auto">Auto (config)</option>
+          <option value="saxo">Saxo</option>
+          <option value="capital">Capital.com</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+
+      <!-- Symbol/ticker input -->
+      <div>
+        <div style="font-size:11px;color:#8b949e;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Symbol / Ticker</div>
+        <input id="mt-ticker" list="mt-ticker-list" placeholder="e.g. CL1!, XAUUSD, NQ1!"
+          oninput="onTickerInput(this.value)"
+          style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:7px 12px;border-radius:6px;font-size:13px;width:180px">
+        <datalist id="mt-ticker-list">
+          <option value="CL1!"><option value="NQ1!"><option value="XAUUSD"><option value="GOLD">
+          <option value="XAGUSD"><option value="SILVER"><option value="GER40"><option value="DAX">
+          <option value="NAS100"><option value="NASDAQ"><option value="BRENT"><option value="WTI">
+        </datalist>
+      </div>
+
+      <!-- Amount / Quantity toggle -->
+      <div>
+        <div style="font-size:11px;color:#8b949e;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Size</div>
+        <!-- mode toggle -->
+        <div style="display:flex;border:1px solid #30363d;border-radius:6px;overflow:hidden;width:fit-content;margin-bottom:6px">
+          <button id="mt-mode-qty" onclick="setTradeMode('qty')"
+            style="background:#238636;color:#fff;border:none;padding:4px 12px;font-size:11px;cursor:pointer;font-weight:600">Qty</button>
+          <button id="mt-mode-eur" onclick="setTradeMode('eur')"
+            style="background:#21262d;color:#8b949e;border:none;padding:4px 12px;font-size:11px;cursor:pointer">€ Amount</button>
+        </div>
+        <!-- qty input -->
+        <div id="mt-qty-wrap">
+          <input id="mt-quantity" type="number" min="0" step="any" placeholder="Default (use mapping)"
+            oninput="onAmountInput()"
+            style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:7px 12px;border-radius:6px;font-size:13px;width:160px">
+        </div>
+        <!-- euro amount input -->
+        <div id="mt-eur-wrap" style="display:none">
+          <div style="position:relative;display:inline-block">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#8b949e;font-size:13px">€</span>
+            <input id="mt-amount-eur" type="number" min="0" step="any" placeholder="e.g. 100"
+              oninput="onAmountInput()"
+              style="background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:7px 12px 7px 24px;border-radius:6px;font-size:13px;width:148px">
+          </div>
+        </div>
+        <!-- live hint: min size / calculated qty -->
+        <div id="mt-size-hint" style="font-size:10px;color:#8b949e;margin-top:4px;min-height:14px"></div>
+      </div>
+
+      <!-- BUY / SELL buttons -->
+      <div>
+        <div style="font-size:11px;color:#8b949e;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Action</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="placeManualOrder('BUY')"
+            style="background:#0f3d1a;border:1px solid #238636;color:#3fb950;padding:7px 22px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700">
+            ▲ BUY
+          </button>
+          <button onclick="placeManualOrder('SELL')"
+            style="background:#3d0f0f;border:1px solid #da3633;color:#f85149;padding:7px 22px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700">
+            ▼ SELL
+          </button>
+        </div>
+      </div>
+
+      <!-- Result message -->
+      <div id="mt-result" style="flex:1;min-width:220px;padding:8px 12px;border-radius:6px;font-size:12px;display:none"></div>
+    </div>
+  </div>
+
+  <!-- Row 5: Symbol map -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">TrendSpider → Saxo Symbol Map</span>
+      <span class="card-count" id="mapCount">0 aliases</span>
+    </div>
+    <div class="tbl-wrap" style="max-height:220px">
+      <table>
+        <thead>
+          <tr>
+            <th>TrendSpider Ticker</th>
+            <th>Saxo Instrument</th>
+            <th>Asset Type</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody id="symbolMapBody">
+          <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Row 4: Capital.com (hidden when disabled) -->
+  <div id="capitalSection" style="display:none;margin-bottom:16px">
+    <div class="grid-2">
+
+      <!-- Capital.com Open Positions -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Capital.com Positions</span>
+          <span class="card-count" id="capitalOpenCount">0</span>
+        </div>
+        <div class="card-body">
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Instrument</th>
+                  <th>Side</th>
+                  <th>Size</th>
+                  <th>Entry</th>
+                  <th>Current</th>
+                  <th>P&amp;L</th>
+                  <th>Deal ID</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="capitalOpenBody">
+                <tr class="empty-row"><td colspan="8">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Capital.com Account -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Capital.com Account</span>
+          <span id="capitalDemoBadge" class="card-count">demo</span>
+        </div>
+        <div class="kv-list" id="capitalAccountKv">
+          <div class="kv-row"><span class="kv-key">Loading…</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 5: Order History -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">Order History</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        <select id="orderHistoryPeriod" onchange="loadOrderHistory()" style="background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:3px 8px;font-size:12px">
+          <option value="3600">Last 1 hour</option>
+          <option value="14400">Last 4 hours</option>
+          <option value="86400" selected>Last 24 hours</option>
+          <option value="604800">Last 7 days</option>
+        </select>
+        <span class="card-count" id="orderHistoryCount">0</span>
+      </span>
+    </div>
+    <div class="card-body">
+
+      <!-- Saxo orders -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:#8b949e;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Saxo — Active Orders</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Instrument</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Order ID</th>
+                <th>Placed</th>
+              </tr>
+            </thead>
+            <tbody id="saxoOrdersBody">
+              <tr class="empty-row"><td colspan="8">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Capital.com activity -->
+      <div id="capitalActivityWrap">
+        <div style="font-size:12px;font-weight:600;color:#8b949e;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Capital.com — Activity History</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Instrument</th>
+                <th>Type</th>
+                <th>Side</th>
+                <th>Size</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Deal ID</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="capitalActivityBody">
+              <tr class="empty-row"><td colspan="9">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 6: Live TrendSpider alerts -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">TrendSpider Live Alerts</span>
+      <span class="card-count" id="alertCount">0</span>
+    </div>
+    <div class="alert-feed" id="alertFeed">
+      <div style="padding:20px;text-align:center;color:#6e7681;font-size:13px">Waiting for signals…</div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────
+  let allJournal = [];
+  let journalFilter = 'ALL';
+  let alertHistory = [];
+  let capChart = null;
+  let saxoChart = null;
+
+  // ── Pie chart helpers ──────────────────────────────────────────────────
+  const BUY_COLORS  = ['#3fb950','#2ea043','#1a7431','#4ade80','#16a34a'];
+  const SELL_COLORS = ['#f85149','#da3633','#b91c1c','#fb7185','#dc2626'];
+
+  function buildPie(canvasId, labels, data, colors, existingChart) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
+    if (existingChart) existingChart.destroy();
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{ data, backgroundColor: colors, borderColor: '#161b22', borderWidth: 2, hoverOffset: 6 }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: c => ` ${c.label}: ${c.raw} lot${c.raw !== 1 ? 's' : ''}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderPie(canvasId, centerNumId, legendId, pieCountId, groups) {
+    const entries = Object.entries(groups);
+    if (!entries.length) {
+      document.getElementById(legendId).innerHTML = '<div style="color:#6e7681;font-size:12px">No open positions</div>';
+      document.getElementById(centerNumId).textContent = '0';
+      document.getElementById(pieCountId).textContent = '0 open';
+      return null;
+    }
+    const labels = [], sizes = [], colors = [];
+    let legendHtml = '';
+    let buyIdx = 0, sellIdx = 0, totalPos = 0;
+
+    entries.forEach(([key, g]) => {
+      const isBuy = key.includes('BUY');
+      const color = isBuy ? BUY_COLORS[buyIdx++ % BUY_COLORS.length] : SELL_COLORS[sellIdx++ % SELL_COLORS.length];
+      labels.push(key);
+      sizes.push(g.size);
+      colors.push(color);
+      totalPos += g.size;
+      const pnl = g.upl != null ? ((g.upl >= 0 ? '+' : '') + fmt(g.upl, 2)) : '—';
+      const pnlColor = g.upl > 0 ? '#3fb950' : g.upl < 0 ? '#f85149' : '#8b949e';
+      legendHtml += `<div class="pie-leg-row">
+        <div class="pie-leg-dot" style="background:${color}"></div>
+        <span class="pie-leg-name">${key}</span>
+        <span style="color:#8b949e;font-size:11px">${g.size}×</span>
+        <span class="pie-leg-pnl" style="color:${pnlColor}">${pnl}</span>
+      </div>`;
+    });
+
+    document.getElementById(legendId).innerHTML = legendHtml;
+    document.getElementById(centerNumId).textContent = totalPos;
+    document.getElementById(pieCountId).textContent = totalPos + ' open';
+    return { labels, sizes, colors };
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  function fmt(n, dec=2) {
+    if (n == null || isNaN(n)) return '—';
+    return Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  function pnlClass(n) {
+    if (n == null || isNaN(n)) return 'pnl-zero';
+    return n > 0 ? 'pnl-pos' : n < 0 ? 'pnl-neg' : 'pnl-zero';
+  }
+  function timeStr(ts) {
+    if (!ts) return '—';
+    try {
+      const d = new Date(ts);
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+           + '<br><span style="color:#6e7681;font-size:10px">' + d.toLocaleDateString('en-GB') + '</span>';
+    } catch { return ts; }
+  }
+  function sourceBadge(src) {
+    if (src === 'TRENDSPIDER') return '<span class="badge badge-ts">TS</span>';
+    if (src === 'ANALYTICS')   return '<span class="badge" style="background:#1f3520;color:#7ee787;border:1px solid #2ea043">PY</span>';
+    return '<span class="badge badge-manual">MANUAL</span>';
+  }
+  function actionBadge(a) {
+    if (!a) return '—';
+    return a.toUpperCase() === 'BUY'
+      ? '<span class="badge badge-buy">BUY</span>'
+      : '<span class="badge badge-sell">SELL</span>';
+  }
+  function statusBadge(s) {
+    if (s === 'PLACED') return '<span class="badge badge-placed">✓ PLACED</span>';
+    if (s === 'CLOSED') return '<span class="badge" style="background:#0f1f2a;color:#79c0ff;border:1px solid #1f6feb">✕ CLOSED</span>';
+    return '<span class="badge badge-failed">✗ FAILED</span>';
+  }
+  function brokerBadge(b) {
+    if (!b || b === 'SAXO') return '<span class="badge" style="background:#0f2a3d;color:#79c0ff;border:1px solid #1f6feb">SAXO</span>';
+    return '<span class="badge" style="background:#1f1235;color:#d2a8ff;border:1px solid #8957e5">CAP</span>';
+  }
+  function mfiWidget(val) {
+    if (val == null || val === '' || isNaN(val)) return '<span class="mfi-none">—</span>';
+    const v = parseFloat(val);
+    const pct = Math.min(Math.max(v, 0), 100);
+    const cls = v >= 80 ? 'mfi-over' : v <= 20 ? 'mfi-under' : 'mfi-mid';
+    const barColor = v >= 80 ? '#f85149' : v <= 20 ? '#3fb950' : '#e3b341';
+    return `<div class="mfi-wrap">
+      <div class="mfi-bar-outer"><div class="mfi-bar-inner" style="width:${pct}%;background:${barColor}"></div></div>
+      <span class="mfi-val ${cls}">${v.toFixed(1)}</span>
+    </div>`;
+  }
+
+  // ── Trade Journal ──────────────────────────────────────────────────────
+  async function loadJournal() {
+    try {
+      const r = await fetch('/api/trades/journal');
+      allJournal = await r.json();
+      renderJournal();
+    } catch(e) { console.error('journal', e); }
+  }
+
+  function filterJournal(f, el) {
+    journalFilter = f;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+    renderJournal();
+  }
+
+  function renderJournal() {
+    let data = allJournal;
+    if (journalFilter === 'TRENDSPIDER') data = data.filter(e => e.source === 'TRENDSPIDER');
+    else if (journalFilter === 'MANUAL')    data = data.filter(e => e.source === 'MANUAL');
+    else if (journalFilter === 'ANALYTICS') data = data.filter(e => e.source === 'ANALYTICS');
+    else if (journalFilter === 'PLACED')    data = data.filter(e => e.status === 'PLACED');
+    else if (journalFilter === 'CLOSED')    data = data.filter(e => e.status === 'CLOSED');
+    else if (journalFilter === 'FAILED')    data = data.filter(e => e.status === 'FAILED');
+
+    document.getElementById('journalCount').textContent = data.length + ' trades';
+    const tb = document.getElementById('journalBody');
+    if (!data.length) {
+      tb.innerHTML = '<tr class="empty-row"><td colspan="10">No trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = data.map(e => `<tr>
+      <td style="white-space:nowrap">${timeStr(e.timestamp)}</td>
+      <td>${sourceBadge(e.source)}</td>
+      <td>${brokerBadge(e.broker)}</td>
+      <td>${actionBadge(e.action)}</td>
+      <td><strong>${e.saxoSymbol || e.ticker || '—'}</strong><br><span style="color:#6e7681;font-size:10px">${e.assetType||''}</span></td>
+      <td>${fmt(e.quantity, 2)}</td>
+      <td style="font-family:monospace">${fmt(e.alertPrice, 4)}</td>
+      <td>${mfiWidget(e.mfi)}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8b949e;font-size:11px">${e.alertName || '—'}</td>
+      <td>${statusBadge(e.status)}</td>
+    </tr>`).join('');
+  }
+
+  // ── Trade Summary ──────────────────────────────────────────────────────
+  async function loadSummary() {
+    try {
+      const r = await fetch('/api/trades/summary');
+      const d = await r.json();
+      document.getElementById('statTotal').textContent = d.totalTrades ?? '0';
+      document.getElementById('statTs').textContent    = d.fromTrendSpider ?? '0';
+      document.getElementById('statSub').textContent   = `${d.placed ?? 0} placed · ${d.failed ?? 0} failed`;
+
+      // Exposure bars
+      const exp = d.notionalExposure || {};
+      const keys = Object.keys(exp);
+      const max  = keys.length ? Math.max(...keys.map(k => Math.abs(exp[k]))) : 1;
+      const el   = document.getElementById('exposureList');
+      if (!keys.length) {
+        el.innerHTML = '<div style="color:#6e7681;font-size:12px;padding:8px 0">No exposure yet</div>';
+        return;
+      }
+      el.innerHTML = keys.map(k => {
+        const pct = Math.round((Math.abs(exp[k]) / max) * 100);
+        return `<div class="exp-row">
+          <div class="exp-label">
+            <span class="exp-sym">${k}</span>
+            <span class="exp-val">${fmt(exp[k], 0)}</span>
+          </div>
+          <div class="exp-bar-outer"><div class="exp-bar-inner" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    } catch(e) { console.error('summary', e); }
+  }
+
+  // ── Open Positions ─────────────────────────────────────────────────────
+  async function loadOpen() {
+    try {
+      const r = await fetch('/api/portfolio/positions');
+      const d = await r.json();
+      const rows = d?.Data || [];
+      document.getElementById('openCount').textContent = rows.length;
+      updateSaxoPie(rows);
+
+      let totalUnreal = 0;
+      const tb = document.getElementById('openBody');
+      if (!rows.length) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="7">No open positions</td></tr>';
+        document.getElementById('statUnreal').textContent = '0.00';
+        document.getElementById('statUnreal').className   = 'stat-value pnl-zero';
+        return;
+      }
+      tb.innerHTML = rows.map(pos => {
+        const base     = pos.PositionBase || pos;
+        const view     = pos.PositionView || {};
+        const disp     = pos.DisplayAndFormat || {};
+        const side     = (base.BuySell || 'Buy').toLowerCase();
+        const pnl      = view.ProfitLossOnTrade ?? view.PnL ?? view.UnrealizedPnl ?? 0;
+        const sym      = disp.Description || disp.Symbol || base.AssetType || '—';
+        const assetType= base.AssetType || 'CfdOnIndex';
+        const entry    = base.OpenPrice ?? base.EntryPrice ?? '—';
+        const curr     = view.CurrentPrice ?? '—';
+        const qty      = base.Amount ?? base.Quantity ?? 1;
+        totalUnreal   += Number(pnl) || 0;
+        const closeSide = side === 'buy' ? 'BUY' : 'SELL';
+        return `<tr>
+          <td><strong>${sym}</strong><br><span style="color:#6e7681;font-size:10px">${assetType}</span></td>
+          <td>${side === 'buy' ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>'}</td>
+          <td>${fmt(qty, 2)}</td>
+          <td style="font-family:monospace">${fmt(entry, 3)}</td>
+          <td style="font-family:monospace">${fmt(curr, 3)}</td>
+          <td class="${pnlClass(pnl)}">${pnl >= 0 ? '+' : ''}${fmt(pnl, 2)}</td>
+          <td style="white-space:nowrap">
+            <button class="pos-btn" onclick="closeSaxoPos('${sym}','${closeSide}',${qty},'${assetType}')"
+              style="background:#3d0f0f;border-color:#da3633;color:#f85149">✕ Close</button>
+            <button class="pos-btn" onclick="prefillManual('saxo','${sym}','${closeSide}')"
+              style="background:#0f3d1a;border-color:#238636;color:#3fb950">＋ More</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      const su = document.getElementById('statUnreal');
+      su.textContent = (totalUnreal >= 0 ? '+' : '') + fmt(totalUnreal, 2);
+      su.className   = 'stat-value ' + pnlClass(totalUnreal);
+    } catch(e) {
+      document.getElementById('openBody').innerHTML = '<tr class="empty-row"><td colspan="7">Could not load — check Saxo token</td></tr>';
+      updateSaxoPie([]);
+    }
+  }
+
+  function updateSaxoPie(rows) {
+    const groups = {};
+    rows.forEach(pos => {
+      const base = pos.PositionBase || pos;
+      const disp = pos.DisplayAndFormat || {};
+      const name = disp.Description || disp.Symbol || base.AssetType || 'Unknown';
+      const side = (base.BuySell || 'Buy').toUpperCase();
+      const key  = name + ' ' + side;
+      const pnl  = (pos.PositionView || {}).ProfitLossOnTrade ?? 0;
+      if (!groups[key]) groups[key] = { size: 0, upl: 0 };
+      groups[key].size += base.Amount || 1;
+      groups[key].upl  += pnl;
+    });
+    const d = renderPie('saxoPieChart', 'saxoPieNum', 'saxoPieLegend', 'saxoPieCount', groups);
+    if (d) saxoChart = buildPie('saxoPieChart', d.labels, d.sizes, d.colors, saxoChart);
+  }
+
+  // ── Closed Positions ───────────────────────────────────────────────────
+  async function loadClosed() {
+    try {
+      const r = await fetch('/api/portfolio/closed?top=30');
+      const d = await r.json();
+      const rows = d?.Data || [];
+      document.getElementById('closedCount').textContent = rows.length;
+
+      const tb = document.getElementById('closedBody');
+      if (!rows.length) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="6">No closed positions</td></tr>';
+        return;
+      }
+      tb.innerHTML = rows.map(pos => {
+        const cp   = pos.ClosedPosition || pos;
+        const disp = pos.DisplayAndFormat || {};
+        const side = (cp.BuyOrSell || cp.BuySell || '').toLowerCase();
+        const pnl  = cp.ClosedProfitLoss ?? cp.ClosedPnl ?? cp.RealizedPnl ?? 0;
+        const sym  = disp.Description || disp.Symbol || cp.AssetType || '—';
+        const closeTime = cp.ExecutionTimeClose ? new Date(cp.ExecutionTimeClose).toLocaleString() : '—';
+        return `<tr>
+          <td><strong>${sym}</strong><br><span style="color:#6e7681;font-size:10px">${closeTime}</span></td>
+          <td>${side === 'buy' ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>'}</td>
+          <td>${fmt(cp.Amount ?? cp.Quantity, 2)}</td>
+          <td style="font-family:monospace">${fmt(cp.OpenPrice, 4)}</td>
+          <td style="font-family:monospace">${fmt(cp.ClosingPrice ?? cp.ClosePrice, 4)}</td>
+          <td class="${pnlClass(pnl)}">${Number(pnl) >= 0 ? '+' : ''}${fmt(pnl, 2)}</td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      document.getElementById('closedBody').innerHTML = '<tr class="empty-row"><td colspan="6">Could not load — check Saxo token</td></tr>';
+    }
+  }
+
+  // ── Account Summary ────────────────────────────────────────────────────
+  async function loadAccount() {
+    try {
+      const r = await fetch('/api/portfolio/summary');
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+
+      const fields = {
+        'Account Value':    d.AccountValue ?? d.NetEquity,
+        'Cash Balance':     d.CashBalance ?? d.InitialMargin,
+        'Margin Used':      d.MarginUsedByCurrentPositions ?? d.MarginUtilization,
+        'Currency':         d.Currency ?? d.AccountCurrency,
+        'Account ID':       d.AccountId ?? d.AccountKey,
+      };
+      const ccy = d.Currency || d.AccountCurrency || '';
+      document.getElementById('statCcy').textContent = ccy;
+      if (d.AccountValue != null) {
+        document.getElementById('statBalance').textContent = fmt(d.AccountValue, 0);
+      }
+
+      document.getElementById('accountKv').innerHTML = Object.entries(fields)
+        .filter(([,v]) => v != null)
+        .map(([k,v]) => `<div class="kv-row">
+          <span class="kv-key">${k}</span>
+          <span class="kv-value">${typeof v === 'number' ? fmt(v,2) : v}</span>
+        </div>`).join('');
+    } catch(e) {
+      document.getElementById('accountKv').innerHTML =
+        '<div class="kv-row"><span class="kv-key" style="color:#f85149">Could not load — check Saxo token</span></div>';
+    }
+  }
+
+  // ── TrendSpider alert history ──────────────────────────────────────────
+  async function loadAlerts() {
+    try {
+      const r = await fetch('/api/webhook/trendspider/history?limit=20');
+      alertHistory = await r.json();
+      renderAlerts(alertHistory);
+    } catch(e) { console.error('alerts', e); }
+  }
+
+  function renderAlerts(list) {
+    document.getElementById('alertCount').textContent = list.length;
+    const feed = document.getElementById('alertFeed');
+    if (!list.length) {
+      feed.innerHTML = '<div style="padding:20px;text-align:center;color:#6e7681;font-size:13px">Waiting for signals…</div>';
+      return;
+    }
+    feed.innerHTML = [...list].reverse().map(a => {
+      const action = (a.action || '').toUpperCase();
+      const chips = [];
+      if (a.mfi    != null) chips.push(`<span class="ind-chip">MFI <span class="${a.mfi >= 80 ? 'mfi-over' : a.mfi <= 20 ? 'mfi-under' : 'mfi-mid'}">${parseFloat(a.mfi).toFixed(1)}</span></span>`);
+      if (a.rsi    != null) chips.push(`<span class="ind-chip">RSI <span>${parseFloat(a.rsi).toFixed(1)}</span></span>`);
+      if (a.volume != null) chips.push(`<span class="ind-chip">Vol <span>${fmt(a.volume,0)}</span></span>`);
+      if (a.interval)       chips.push(`<span class="ind-chip">${a.interval}</span>`);
+      return `<div class="alert-item">
+        <div>
+          ${actionBadge(action)}
+          <div class="alert-time">${timeStr(a.timestamp)}</div>
+        </div>
+        <div class="alert-body">
+          <div class="alert-ticker">${a.ticker || '—'}</div>
+          <div class="alert-name">${a.alertName || ''}</div>
+          ${chips.length ? '<div class="alert-indicators">' + chips.join('') + '</div>' : ''}
+        </div>
+        <div class="alert-price">${a.price != null ? fmt(a.price, 4) : '—'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── WebSocket ──────────────────────────────────────────────────────────
+  function connectWS() {
+    const sock  = new SockJS('/ws');
+    const stomp = Stomp.over(sock);
+    stomp.debug = null;
+
+    stomp.connect({}, () => {
+      document.getElementById('wsDot').classList.add('on');
+      document.getElementById('wsLabel').textContent = 'Live';
+
+      stomp.subscribe('/topic/trendspider', msg => {
+        try {
+          const alert = JSON.parse(msg.body);
+          alertHistory.unshift(alert);
+          if (alertHistory.length > 50) alertHistory.pop();
+          renderAlerts(alertHistory);
+          // also refresh journal after 1s (order may have been placed)
+          setTimeout(() => { loadJournal(); loadSummary(); loadOpen(); }, 1200);
+        } catch(e) {}
+      });
+    }, () => {
+      document.getElementById('wsDot').classList.remove('on');
+      document.getElementById('wsLabel').textContent = 'Disconnected';
+      setTimeout(connectWS, 5000);
+    });
+  }
+
+  // ── Manual Trade ───────────────────────────────────────────────────────────
+  let _tradeMode     = 'qty';   // 'qty' or 'eur'
+  let _tickerInfo    = null;    // cached result from /api/trade/info/{ticker}
+  let _infoTimer     = null;
+
+  function setTradeMode(mode) {
+    _tradeMode = mode;
+    document.getElementById('mt-qty-wrap').style.display = mode === 'qty' ? '' : 'none';
+    document.getElementById('mt-eur-wrap').style.display = mode === 'eur' ? '' : 'none';
+    document.getElementById('mt-mode-qty').style.background = mode === 'qty' ? '#238636' : '#21262d';
+    document.getElementById('mt-mode-qty').style.color      = mode === 'qty' ? '#fff'    : '#8b949e';
+    document.getElementById('mt-mode-eur').style.background = mode === 'eur' ? '#1f6feb' : '#21262d';
+    document.getElementById('mt-mode-eur').style.color      = mode === 'eur' ? '#fff'    : '#8b949e';
+    updateSizeHint();
+  }
+
+  function onTickerInput(value) {
+    _tickerInfo = null;
+    clearTimeout(_infoTimer);
+    document.getElementById('mt-size-hint').textContent = '';
+    if (!value || value.length < 2) return;
+    _infoTimer = setTimeout(() => loadTickerInfo(value.trim().toUpperCase()), 600);
+  }
+
+  async function loadTickerInfo(ticker) {
+    try {
+      const r = await fetch(`/api/trade/info/${encodeURIComponent(ticker)}`);
+      if (!r.ok) return;
+      _tickerInfo = await r.json();
+      updateSizeHint();
+    } catch { /* ignore */ }
+  }
+
+  function onAmountInput() { updateSizeHint(); }
+
+  function updateSizeHint() {
+    const hint   = document.getElementById('mt-size-hint');
+    const info   = _tickerInfo;
+    if (!info) { hint.textContent = ''; return; }
+
+    const minSize = info.minimumTradeSize || 0;
+    const mid     = info.mid || info.ask || 0;
+
+    if (_tradeMode === 'qty') {
+      const qtyRaw = parseFloat(document.getElementById('mt-quantity').value) || 0;
+      if (minSize > 0 && qtyRaw > 0 && qtyRaw < minSize)
+        hint.textContent = `⚠ Min size ${minSize} — will be adjusted automatically`;
+      else if (minSize > 0)
+        hint.textContent = `Min size: ${minSize}`;
+      else
+        hint.textContent = '';
+      return;
+    }
+
+    // euro amount mode
+    const euros = parseFloat(document.getElementById('mt-amount-eur').value) || 0;
+    if (euros <= 0 || mid <= 0) {
+      hint.textContent = mid > 0 ? `Price: €${fmt(mid,4)}  |  Min size: ${minSize}` : 'Loading price…';
+      return;
+    }
+    const rawQty   = euros / mid;
+    const adjQty   = minSize > 0 ? Math.max(minSize, Math.round(rawQty / minSize) * minSize) : rawQty;
+    const adjEuros = adjQty * mid;
+    if (minSize > 0 && rawQty < minSize) {
+      hint.textContent = `⚠ €${euros} ≈ ${fmt(rawQty,4)} units < min ${minSize} → will use ${minSize} units (≈ €${fmt(adjEuros,2)})`;
+      hint.style.color = '#d29922';
+    } else {
+      hint.textContent = `≈ ${fmt(adjQty,4)} units @ €${fmt(mid,4)} per unit`;
+      hint.style.color = '#8b949e';
+    }
+  }
+
+  /** Returns the resolved quantity to send (0 = use mapping default). */
+  function resolveQuantity() {
+    if (_tradeMode === 'qty') {
+      return parseFloat(document.getElementById('mt-quantity').value) || 0;
+    }
+    // euro mode: calculate from price
+    const euros   = parseFloat(document.getElementById('mt-amount-eur').value) || 0;
+    const mid     = _tickerInfo?.mid || _tickerInfo?.ask || 0;
+    const minSize = _tickerInfo?.minimumTradeSize || 0;
+    if (euros <= 0 || mid <= 0) return 0;
+    const rawQty = euros / mid;
+    return minSize > 0 ? Math.max(minSize, Math.round(rawQty / minSize) * minSize) : rawQty;
+  }
+
+  async function placeManualOrder(action) {
+    const ticker = document.getElementById('mt-ticker').value.trim();
+    const broker = document.getElementById('mt-broker').value;
+    const res    = document.getElementById('mt-result');
+    if (!ticker) { showTradeResult(res, false, 'Enter a ticker first'); return; }
+
+    const quantity = resolveQuantity();
+
+    // validate euro mode has a price
+    if (_tradeMode === 'eur') {
+      const euros = parseFloat(document.getElementById('mt-amount-eur').value) || 0;
+      if (euros <= 0) { showTradeResult(res, false, 'Enter an amount in €'); return; }
+      if (!_tickerInfo?.mid && !_tickerInfo?.ask) {
+        showTradeResult(res, false, 'Price not loaded yet — wait a moment and try again'); return;
+      }
+    }
+
+    res.style.display = 'block';
+    res.style.background = '#21262d';
+    res.style.color = '#8b949e';
+    res.textContent = `Placing ${action} on ${ticker}${quantity > 0 ? ` (qty ${fmt(quantity,4)})` : ''}…`;
+
+    try {
+      const body = { broker, ticker, action };
+      if (quantity > 0) body.quantity = quantity;
+      const r = await fetch('/api/trade/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.error) { showTradeResult(res, false, d.error); return; }
+
+      const parts = [];
+      if (d.saxoStatus)    parts.push(`Saxo: ${d.saxoStatus}${d.saxoOrderId ? ' #'+d.saxoOrderId : ''}`);
+      if (d.capitalStatus) parts.push(`Capital: ${d.capitalStatus}${d.capitalDealRef ? ' #'+d.capitalDealRef : ''}`);
+      const ok = parts.some(p => p.includes('PLACED'));
+      let msg = parts.join(' | ') || JSON.stringify(d);
+      if (d.saxoNote)    msg += `  ⚠ ${d.saxoNote}`;
+      if (d.capitalNote) msg += `  ⚠ ${d.capitalNote}`;
+      showTradeResult(res, ok, msg);
+      if (ok) setTimeout(() => { loadCapitalPositions(); loadOpen(); loadJournal(); }, 1500);
+    } catch(e) {
+      showTradeResult(res, false, e.message);
+    }
+  }
+
+  function showTradeResult(el, ok, msg) {
+    el.style.display = 'block';
+    el.style.background = ok ? '#0f3d1a' : '#3d0f0f';
+    el.style.border = `1px solid ${ok ? '#238636' : '#da3633'}`;
+    el.style.color  = ok ? '#3fb950' : '#f85149';
+    el.textContent  = msg;
+  }
+
+  async function closeSaxoPos(saxoSymbol, openSide, quantity, assetType) {
+    if (!confirm(`Close Saxo ${openSide} position on ${saxoSymbol} (qty ${quantity})?`)) return;
+    try {
+      const r = await fetch('/api/trade/saxo/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker: saxoSymbol, side: openSide, quantity, assetType })
+      });
+      const d = await r.json();
+      if (d.status === 'close_order_placed') {
+        alert(`Close order placed ✓  OrderId: ${d.orderId}`);
+        setTimeout(() => { loadOpen(); loadJournal(); }, 1000);
+      } else { alert('Response: ' + JSON.stringify(d)); }
+    } catch(e) { alert('Close failed: ' + e.message); }
+  }
+
+  function prefillManual(broker, ticker, side) {
+    document.getElementById('mt-broker').value = broker;
+    document.getElementById('mt-ticker').value = ticker;
+    document.getElementById('mt-ticker').focus();
+    const panel = document.getElementById('mt-ticker').closest('.card');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function closeCapitalPosition(dealId, name) {
+    if (!confirm(`Close Capital.com position ${name} (${dealId})?`)) return;
+    try {
+      const r = await fetch(`/api/trade/capital/${encodeURIComponent(dealId)}`, { method: 'DELETE' });
+      const d = await r.json();
+      alert(d.status === 'closed' ? `Position ${dealId} closed.` : JSON.stringify(d));
+      setTimeout(loadCapitalPositions, 800);
+    } catch(e) { alert('Close failed: ' + e.message); }
+  }
+
+  // ── Broker status ──────────────────────────────────────────────────────────
+  async function loadBroker() {
+    try {
+      const r = await fetch('/api/config/broker');
+      const d = await r.json();
+      const broker  = (d.broker || 'saxo').toUpperCase();
+      const capDemo = d.capitalDemo ? ' DEMO' : ' LIVE';
+      // Show Capital.com section whenever capital.enabled=true — independent of trading.broker routing
+      const capEnabled = d.capitalEnabled === true;
+      const capRouted  = d.capitalActive  === true;   // whether TrendSpider signals go to Capital
+
+      // Header badge
+      const el = document.getElementById('brokerBadge');
+      let label = broker, color = '#79c0ff', bg = '#0f2a3d', border = '#1f6feb';
+      if (broker === 'BOTH')    { color = '#e3b341'; bg = '#2d2a12'; border = '#9e6a03'; }
+      else if (broker === 'CAPITAL') { color = '#d2a8ff'; bg = '#1f1235'; border = '#8957e5'; }
+      el.style.background = bg;
+      el.style.borderColor = border;
+      el.style.color = color;
+      el.textContent = 'Broker: ' + label + (capEnabled && !capRouted ? ' (+CAP)' : '');
+
+      // Show Capital.com section whenever enabled (regardless of signal routing)
+      const sec = document.getElementById('capitalSection');
+      if (capEnabled) {
+        sec.style.display = '';
+        document.getElementById('capitalDemoBadge').textContent = capDemo.trim();
+      } else {
+        sec.style.display = 'none';
+      }
+    } catch(e) { console.error('broker', e); }
+  }
+
+  // ── Capital.com Positions ──────────────────────────────────────────────────
+  async function loadCapitalPositions() {
+    try {
+      const r = await fetch('/api/capital/positions');
+      if (!r.ok) { updateCapPie([]); return; }
+      const rows = await r.json();
+      document.getElementById('capitalOpenCount').textContent = rows.length;
+      updateCapPie(rows);
+      const tb = document.getElementById('capitalOpenBody');
+      if (!rows.length) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="8">No open positions</td></tr>';
+        return;
+      }
+      tb.innerHTML = rows.map(item => {
+        const pos  = item.position || item;
+        const mkt  = item.market   || {};
+        const dir  = (pos.direction || '').toUpperCase();
+        const pnl  = pos.upl ?? pos.profit ?? pos.pnl ?? null;
+        const name = mkt.instrumentName || mkt.epic || pos.epic || '—';
+        const epic = mkt.epic || '';
+        const dealId = pos.dealId || '—';
+        const dealIdShort = dealId.length > 14 ? dealId.substring(0, 14) + '…' : dealId;
+        const pnlColor = pnl > 0 ? '#3fb950' : pnl < 0 ? '#f85149' : '#8b949e';
+        return `<tr>
+          <td><strong>${name}</strong><br><span style="color:#6e7681;font-size:10px">${epic}</span></td>
+          <td>${dir === 'BUY' ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>'}</td>
+          <td>${pos.size ?? pos.dealSize ?? '—'}</td>
+          <td style="font-family:monospace">${fmt(pos.level ?? pos.openLevel, 3)}</td>
+          <td style="font-family:monospace">${fmt(mkt.bid ?? mkt.offer, 3)}</td>
+          <td style="font-weight:600;color:${pnlColor}">${pnl != null ? (pnl >= 0 ? '+' : '') + fmt(pnl, 2) : '—'}</td>
+          <td style="font-size:10px;color:#6e7681" title="${dealId}">${dealIdShort}</td>
+          <td style="white-space:nowrap">
+            <button class="pos-btn" onclick="closeCapitalPosition('${dealId}','${name}')"
+              style="background:#3d0f0f;border-color:#da3633;color:#f85149">✕ Close</button>
+            <button class="pos-btn" onclick="prefillManual('capital','${epic}','BUY')"
+              style="background:#0f3d1a;border-color:#238636;color:#3fb950">＋ More</button>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      const tb = document.getElementById('capitalOpenBody');
+      if (tb) tb.innerHTML = '<tr class="empty-row"><td colspan="8">Could not load — check Capital.com session</td></tr>';
+      updateCapPie([]);
+    }
+  }
+
+  function updateCapPie(rows) {
+    const groups = {};
+    rows.forEach(item => {
+      const pos  = item.position || item;
+      const mkt  = item.market   || {};
+      const name = mkt.instrumentName || mkt.epic || 'Unknown';
+      const dir  = (pos.direction || 'BUY').toUpperCase();
+      const key  = name + ' ' + dir;
+      if (!groups[key]) groups[key] = { size: 0, upl: 0 };
+      groups[key].size += pos.size || 1;
+      groups[key].upl  += pos.upl  || 0;
+    });
+    const d = renderPie('capPieChart', 'capPieNum', 'capPieLegend', 'capPieCount', groups);
+    if (d) capChart = buildPie('capPieChart', d.labels, d.sizes, d.colors, capChart);
+  }
+
+  // ── Capital.com Account ────────────────────────────────────────────────────
+  async function loadCapitalAccount() {
+    try {
+      const r = await fetch('/api/capital/account');
+      if (!r.ok) return;
+      const d = await r.json();
+      const accounts = d.accounts || (Array.isArray(d) ? d : [d]);
+      const acc = accounts[0] || d;
+      const fields = {
+        'Balance':     acc.balance?.balance        ?? acc.balance,
+        'Deposit':     acc.balance?.deposit        ?? acc.deposit,
+        'P&L':         acc.balance?.pnl            ?? acc.pnl,
+        'Available':   acc.balance?.available      ?? acc.available,
+        'Account ID':  acc.accountId               ?? acc.accountName,
+        'Currency':    acc.currency,
+        'Status':      acc.status,
+      };
+      document.getElementById('capitalAccountKv').innerHTML = Object.entries(fields)
+        .filter(([,v]) => v != null)
+        .map(([k,v]) => `<div class="kv-row">
+          <span class="kv-key">${k}</span>
+          <span class="kv-value">${typeof v === 'number' ? fmt(v, 2) : v}</span>
+        </div>`).join('');
+    } catch(e) {
+      const el = document.getElementById('capitalAccountKv');
+      if (el) el.innerHTML = '<div class="kv-row"><span class="kv-key" style="color:#f85149">Could not load account</span></div>';
+    }
+  }
+
+  // ── Symbol Map ─────────────────────────────────────────────────────────────
+  async function loadSymbolMap() {
+    try {
+      const r = await fetch('/api/config/symbol-map');
+      const rows = await r.json();
+      document.getElementById('mapCount').textContent = rows.length + ' aliases';
+
+      const assetColors = {
+        'FxSpot':        '#e3b341',
+        'CfdOnIndex':    '#79c0ff',
+        'CfdOnFutures':  '#d2a8ff',
+        'CfdOnStock':    '#7ee787',
+        'CfdOnCommodity':'#ffa657',
+      };
+
+      // Group by saxoSymbol so aliases are visually grouped
+      const grouped = {};
+      rows.forEach(r => {
+        const key = r.saxoSymbol;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(r);
+      });
+
+      const tb = document.getElementById('symbolMapBody');
+      if (!rows.length) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="4">No mappings configured</td></tr>';
+        return;
+      }
+
+      let html = '';
+      Object.entries(grouped).forEach(([saxo, aliases]) => {
+        aliases.forEach((row, i) => {
+          const color = assetColors[row.assetType] || '#8b949e';
+          html += `<tr>
+            <td><code style="background:#0d1117;border:1px solid #30363d;padding:1px 7px;border-radius:4px;font-size:12px;color:#79c0ff">${row.trendSpiderTicker}</code></td>
+            <td>${i === 0 ? '<strong>' + saxo + '</strong>' : '<span style="color:#6e7681">↳ alias</span>'}</td>
+            <td><span style="color:${color};font-size:12px">${row.assetType}</span></td>
+            <td>${row.quantity}</td>
+          </tr>`;
+        });
+      });
+      tb.innerHTML = html;
+    } catch(e) { console.error('symbolMap', e); }
+  }
+
+  // ── Order History ──────────────────────────────────────────────────────
+  function orderStatusBadge(status) {
+    if (!status) return '';
+    const s = status.toUpperCase();
+    const color = s === 'ACCEPTED' || s === 'FILLED' || s === 'EXECUTED' ? '#3fb950'
+                : s === 'REJECTED' || s === 'CANCELLED' ? '#f85149'
+                : '#58a6ff';
+    return `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600">${s}</span>`;
+  }
+
+  function saxoOrderBadge(status) {
+    if (!status) return '';
+    const s = status;
+    const color = s === 'Working' || s === 'LockedWorking' ? '#58a6ff'     // active/pending → blue
+                : s === 'Filled'  || s === 'FinalFill'     ? '#3fb950'     // filled → green
+                : s === 'Cancelled' || s === 'Expired' || s === 'Rejected' ? '#f85149'
+                : '#8b949e';
+    return `<span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600">${s}</span>`;
+  }
+
+  async function loadOrderHistory() {
+    const period = document.getElementById('orderHistoryPeriod')?.value || '86400';
+    let totalCount = 0;
+
+    // Saxo active orders
+    try {
+      const r = await fetch('/api/portfolio/orders');
+      const d = await r.json();
+      const rows = d?.Data || [];
+      const tb = document.getElementById('saxoOrdersBody');
+      if (rows.length === 0) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="8">No active orders</td></tr>';
+      } else {
+        totalCount += rows.length;
+        tb.innerHTML = rows.map(o => {
+          // Saxo wraps fields: top-level has OrderId/BuySell/Amount, nested has DisplayAndFormat
+          const base = o.Order || o;
+          const disp = o.DisplayAndFormat || base.DisplayAndFormat || {};
+          const state = o.OrderState || {};
+          const side = base.BuySell || '';
+          const sideColor = side === 'Buy' ? '#3fb950' : side === 'Sell' ? '#f85149' : '#c9d1d9';
+          const instrument = disp.Description || base.AssetType || base.Uic || '—';
+          const openDate = base.OpenDate || state.OpenDate || '';
+          const placedStr = openDate ? new Date(openDate).toLocaleString() : '—';
+          const status = base.Status || state.Status || 'Working';
+          const orderType = base.OpenOrderType || base.OrderType || '—';
+          const price = base.Price ?? base.OrderPrice ?? null;
+          return `<tr>
+            <td>${instrument}</td>
+            <td style="color:${sideColor};font-weight:600">${side || '—'}</td>
+            <td>${base.Amount ?? '—'}</td>
+            <td style="font-size:11px;color:#8b949e">${orderType}</td>
+            <td>${price != null ? parseFloat(price).toFixed(4) : '—'}</td>
+            <td>${saxoOrderBadge(status)}</td>
+            <td style="font-size:11px;color:#8b949e">${base.OrderId || o.OrderId || '—'}</td>
+            <td style="font-size:11px;color:#8b949e">${placedStr}</td>
+          </tr>`;
+        }).join('');
+      }
+    } catch(e) {
+      document.getElementById('saxoOrdersBody').innerHTML =
+        `<tr class="empty-row"><td colspan="8" style="color:#f85149">Error: ${e.message}</td></tr>`;
+    }
+
+    // Capital.com activity
+    const capWrap = document.getElementById('capitalActivityWrap');
+    try {
+      const r = await fetch(`/api/capital/activity?lastPeriod=${period}`);
+      if (!r.ok) { capWrap.style.display = 'none'; return; }
+      capWrap.style.display = '';
+      const activities = await r.json();
+      const tb = document.getElementById('capitalActivityBody');
+      if (!activities || activities.length === 0) {
+        tb.innerHTML = '<tr class="empty-row"><td colspan="9">No activity in this period</td></tr>';
+      } else {
+        totalCount += activities.length;
+        tb.innerHTML = activities.map(a => {
+          const details = a.details || {};
+          const side = details.direction || '';
+          const sideColor = side === 'BUY' ? '#3fb950' : side === 'SELL' ? '#f85149' : '#c9d1d9';
+          const dateStr = a.date ? new Date(a.date).toLocaleString() : (a.dateUTC || '—');
+          const price = details.level ? parseFloat(details.level).toFixed(4) : (details.trailingStep || '—');
+          return `<tr>
+            <td style="font-size:11px">${dateStr}</td>
+            <td>${a.epic || '—'}</td>
+            <td style="font-size:11px;color:#8b949e">${(a.type || '').replace(/_/g,' ')}</td>
+            <td style="color:${sideColor};font-weight:600">${side || '—'}</td>
+            <td>${details.size ?? '—'}</td>
+            <td>${price}</td>
+            <td>${orderStatusBadge(a.status)}</td>
+            <td style="font-size:11px;color:#8b949e">${a.dealId || '—'}</td>
+            <td style="font-size:11px;color:#8b949e">${a.source || '—'}</td>
+          </tr>`;
+        }).join('');
+      }
+    } catch(e) {
+      capWrap.style.display = 'none';
+    }
+
+    document.getElementById('orderHistoryCount').textContent = totalCount + ' entries';
+  }
+
+  // ── Refresh all ────────────────────────────────────────────────────────
+  async function refreshAll() {
+    document.getElementById('lastUpdate').textContent = 'Refreshing…';
+    await Promise.all([
+      loadBroker(),
+      loadJournal(), loadSummary(),
+      loadOpen(), loadClosed(),
+      loadAccount(), loadAlerts(),
+      loadSymbolMap(),
+      loadCapitalPositions(), loadCapitalAccount(),
+      loadOrderHistory()
+    ]);
+    document.getElementById('lastUpdate').textContent =
+      'Updated ' + new Date().toLocaleTimeString();
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────
+  connectWS();
+  refreshAll();
+  setInterval(refreshAll, 15000);   // auto-refresh every 15 s
+</script>
+</body>
+</html>

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CFD Live Prices — Saxo Simulation</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+
+  <!-- SockJS + STOMP for WebSocket -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <!-- Chart.js for P&L analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0f14;
+      color: #c9d1d9;
+      font-family: 'Courier New', monospace;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    header h1 { font-size: 18px; color: #58a6ff; letter-spacing: 1px; }
+
+    #status {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      background: #21262d;
+      color: #8b949e;
+    }
+    #status.connecting { color: #e3b341; }
+    #status.live       { color: #3fb950; }
+    #status.error      { color: #f85149; }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .controls label { font-size: 13px; color: #8b949e; }
+
+    .controls input, .controls select {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    .controls input { width: 300px; }
+
+    .controls button {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .controls button:hover { background: #2ea043; }
+    .controls button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead th {
+      background: #161b22;
+      color: #8b949e;
+      font-weight: normal;
+      text-align: center;
+      padding: 10px 18px;
+      border-bottom: 1px solid #21262d;
+      white-space: nowrap;
+    }
+    thead th:first-child { text-align: left; }
+
+    tbody tr { border-bottom: 1px solid #161b22; }
+    tbody tr:hover { background: #161b22; }
+
+    td {
+      padding: 10px 18px;
+      text-align: center;
+      white-space: nowrap;
+      transition: background 0.3s;
+    }
+    td:first-child { text-align: left; color: #8b949e; font-size: 12px; }
+
+    .cell-inner { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+    .price-mid   { font-size: 15px; font-weight: bold; color: #c9d1d9; letter-spacing: 0.5px; }
+    .price-ba    { font-size: 11px; color: #484f58; }
+    .bid         { color: #f85149; }
+    .ask         { color: #3fb950; }
+
+    @keyframes flash-up   { 0% { background: rgba(63,185,80,0.4); } 100% { background: transparent; } }
+    @keyframes flash-down { 0% { background: rgba(248,81,73,0.4); } 100% { background: transparent; } }
+
+    .flash-up   { animation: flash-up   0.7s ease-out; }
+    .flash-down { animation: flash-down 0.7s ease-out; }
+
+    .arrow-up   { color: #3fb950; font-size: 10px; }
+    .arrow-down { color: #f85149; font-size: 10px; }
+
+    #footer { margin-top: 12px; font-size: 11px; color: #484f58; }
+    .pending { color: #484f58; font-style: italic; }
+
+    .preset-btn {
+      background: #21262d;
+      color: #8b949e;
+      border: 1px solid #30363d;
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .preset-btn:hover  { background: #30363d; color: #c9d1d9; }
+    .preset-btn.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+
+    /* ── Analytics / P&L Chart ──────────────────────────────────── */
+    .stats-banner {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .stat-item {
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 8px 18px;
+      min-width: 100px;
+      text-align: center;
+      flex: 1;
+    }
+    .stat-label { font-size: 10px; color: #484f58; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-value { font-size: 17px; font-weight: bold; color: #c9d1d9; margin-top: 3px; }
+    .chart-wrap { position: relative; height: 220px; margin: 10px 0; }
+    .trade-log-wrap { max-height: 170px; overflow-y: auto; margin-top: 8px; }
+    .analytics-hint { font-size: 11px; color: #484f58; margin-top: 6px; }
+
+    /* ── Instrument Browser ──────────────────────────────────────── */
+    details.browser { margin-bottom: 16px; border: 1px solid #30363d; border-radius: 8px; }
+    details.browser summary {
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #58a6ff;
+      user-select: none;
+      list-style: none;
+    }
+    details.browser summary::before { content: '▶  '; font-size: 10px; }
+    details.browser[open] summary::before { content: '▼  '; }
+    details.browser summary:hover { background: #161b22; border-radius: 8px; }
+    .browser-body { padding: 10px 14px 14px; }
+
+    #browseResults table { font-size: 12px; }
+    #browseResults thead th { padding: 7px 12px; }
+    #browseResults td { padding: 7px 12px; }
+    #browseResults .use-btn {
+      background: #1f6feb22;
+      color: #58a6ff;
+      border: 1px solid #1f6feb55;
+      padding: 3px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    #browseResults .use-btn:hover { background: #1f6feb44; }
+    #browseResults .stream-btn { background: #23863622; color: #3fb950; border-color: #3fb95055; }
+    #browseResults .stream-btn:hover { background: #23863644; }
+    .pager-wrap { display: flex; gap: 8px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>&#9679; CFD Live Prices &mdash; Saxo Simulation</h1>
+  <span id="status">Disconnected</span>
+</header>
+
+<div class="controls">
+  <label>Preset:</label>
+  <span id="presetButtons">loading…</span>
+</div>
+<div class="controls">
+  <label>Symbols:</label>
+  <input  id="symbolsInput"    type="text"  value=""/>
+  <label>Type:</label>
+  <select id="assetTypeSelect">
+    <option value="CfdOnIndex">CfdOnIndex (Indices)</option>
+    <option value="FxSpot">FxSpot (Gold / Silver)</option>
+    <option value="CfdOnFutures">CfdOnFutures (Oil CFD)</option>
+    <option value="ContractFutures">ContractFutures (Futures)</option>
+    <option value="CfdOnStock">CfdOnStock (Shares)</option>
+    <option value="CfdOnEtf">CfdOnEtf</option>
+    <option value="CfdOnCommodity">CfdOnCommodity</option>
+  </select>
+  <button id="startBtn" onclick="startStreaming()">Start Streaming</button>
+</div>
+
+<!-- ── P&L Analytics Chart ───────────────────────────────────────────────── -->
+<details class="browser" id="analyticsPanel" open>
+  <summary>P&amp;L Analytics &mdash; L&eacute;vy Strategy</summary>
+  <div class="browser-body">
+
+    <div class="stats-banner">
+      <div class="stat-item">
+        <div class="stat-label">Realized</div>
+        <div id="stat-realized" class="stat-value">€0.00</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Unrealized</div>
+        <div id="stat-unrealized" class="stat-value">€0.00</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Total P&amp;L</div>
+        <div id="stat-total" class="stat-value">€0.00</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Trades</div>
+        <div id="stat-trades" class="stat-value">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Win Rate</div>
+        <div id="stat-winrate" class="stat-value">—</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="pnlCanvas"></canvas>
+    </div>
+
+    <div class="trade-log-wrap table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left">Time</th>
+            <th style="text-align:left">Symbol</th>
+            <th>Action</th>
+            <th>Price</th>
+            <th>Cum P&amp;L</th>
+          </tr>
+        </thead>
+        <tbody id="tradeLog"></tbody>
+      </table>
+    </div>
+
+    <div class="analytics-hint">
+      Start the Python analytics (<code>cd analytics &amp;&amp; python main.py</code>) to see live data here.
+    </div>
+  </div>
+</details>
+
+<!-- ── Instrument Browser ─────────────────────────────────────────────────── -->
+<details class="browser">
+  <summary>Instrument Browser</summary>
+  <div class="browser-body">
+    <div class="controls" style="flex-wrap:wrap;">
+      <label>Keyword:</label>
+      <input id="browseKeyword" type="text" placeholder="oil, germany, AAPL…" style="width:160px"
+             oninput="onBrowseKeywordInput()"
+             onkeydown="if(event.key==='Enter') browseInstruments(0)"/>
+      <label>Asset Type:</label>
+      <select id="browseAssetType">
+        <option value="">— Any —</option>
+        <option value="CfdOnIndex">CfdOnIndex</option>
+        <option value="FxSpot">FxSpot</option>
+        <option value="CfdOnFutures">CfdOnFutures</option>
+        <option value="ContractFutures">ContractFutures</option>
+        <option value="CfdOnStock">CfdOnStock</option>
+        <option value="CfdOnEtf">CfdOnEtf</option>
+        <option value="CfdOnCommodity">CfdOnCommodity</option>
+      </select>
+      <label>Exchange:</label>
+      <input id="browseExchange" type="text" placeholder="XLON, XNAS…" style="width:90px"/>
+      <label>Show:</label>
+      <input id="browseTop" type="number" value="20" min="1" max="100" style="width:55px"/>
+      <label style="display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="browseNonTradable"/> Non-tradable
+      </label>
+      <button onclick="browseInstruments(0)">Search</button>
+    </div>
+    <div id="browseResults"></div>
+    <div class="pager-wrap" id="browsePager"></div>
+  </div>
+</details>
+
+<div class="table-wrap">
+  <table id="priceTable">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div id="footer"></div>
+
+<script>
+  let symbols   = [];
+  let assetType = 'CfdOnStock';
+  let prevMid   = {};   // symbol -> last mid (for flash direction)
+  let stompClient = null;
+  let subscription = null;
+
+  // ── Connect to backend STOMP WebSocket ──────────────────────────────────
+  function connectWebSocket() {
+    setStatus('connecting', 'Connecting...');
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null; // suppress STOMP debug logs
+
+    stompClient.connect({}, function () {
+      setStatus('live', 'WS Connected');
+      subscription = stompClient.subscribe('/topic/prices', function (msg) {
+        const price = JSON.parse(msg.body);
+        updateCell(price);
+      });
+      subscribeAnalytics();
+    }, function (err) {
+      setStatus('error', 'WS Error');
+      console.error('STOMP error', err);
+    });
+  }
+
+  // ── Start streaming: build table + call backend ──────────────────────────
+  function startStreaming() {
+    symbols   = document.getElementById('symbolsInput').value
+                  .split(',').map(s => s.trim()).filter(Boolean);
+    assetType = document.getElementById('assetTypeSelect').value;
+    prevMid   = {};
+
+    if (symbols.length === 0) { alert('Enter at least one symbol'); return; }
+
+    buildTable();
+
+    // Ensure WS is connected first, then subscribe
+    if (stompClient && stompClient.connected) {
+      doSubscribe();
+    } else {
+      // Connect, then subscribe once ready
+      const socket = new SockJS('/ws');
+      stompClient = Stomp.over(socket);
+      stompClient.debug = null;
+      setStatus('connecting', 'Connecting...');
+      stompClient.connect({}, function () {
+        setStatus('live', 'WS Connected');
+        subscription = stompClient.subscribe('/topic/prices', function (msg) {
+          const price = JSON.parse(msg.body);
+          updateCell(price);
+        });
+        subscribeAnalytics();
+        doSubscribe();
+      }, function (err) {
+        setStatus('error', 'WS Error: ' + err);
+      });
+    }
+  }
+
+  function doSubscribe() {
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('startBtn').textContent = 'Streaming...';
+    setStatus('connecting', 'Subscribing...');
+
+    const encodedSymbols = symbols.map(s => encodeURIComponent(s)).join(',');
+    fetch(`/api/stream/subscribe?symbols=${encodedSymbols}&assetType=${assetType}`, {
+      method: 'POST'
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(() => {
+      setStatus('live', 'LIVE &#9679;');
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('startBtn').textContent = 'Restart';
+    })
+    .catch(err => {
+      setStatus('error', 'Error: ' + err.message);
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('startBtn').textContent = 'Start Streaming';
+      // Auto-open instrument browser so user can find the correct symbol
+      const browser = document.querySelector('details.browser');
+      browser.open = true;
+      document.getElementById('browseKeyword').focus();
+      browser.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
+  // ── Build table header + empty row ──────────────────────────────────────
+  function buildTable() {
+    document.getElementById('tableHead').innerHTML =
+      '<tr><th>Time</th>' + symbols.map(s => `<th>${s}</th>`).join('') + '</tr>';
+
+    document.getElementById('tableBody').innerHTML =
+      `<tr id="dataRow">
+        <td id="cell-time" class="pending">—</td>
+        ${symbols.map(s => `<td id="cell-${s}"><div class="cell-inner"><span class="price-mid pending">waiting…</span></div></td>`).join('')}
+      </tr>`;
+  }
+
+  // ── Update a single cell when a price arrives ────────────────────────────
+  function updateCell(price) {
+    const { symbol, bid, ask, mid } = price;
+    const cell = document.getElementById(`cell-${symbol}`);
+    if (!cell) return;
+
+    // Update time column
+    document.getElementById('cell-time').textContent =
+      new Date().toLocaleTimeString('en-GB', { hour12: false });
+
+    const spread = (ask - bid).toFixed(3);
+    const prev   = prevMid[symbol];
+    let flashClass = '';
+    let arrow = '';
+
+    if (prev !== undefined) {
+      if (mid > prev) { flashClass = 'flash-up';   arrow = '<span class="arrow-up">&#9650;</span>'; }
+      if (mid < prev) { flashClass = 'flash-down'; arrow = '<span class="arrow-down">&#9660;</span>'; }
+    }
+    prevMid[symbol] = mid;
+
+    cell.innerHTML = `
+      <div class="cell-inner">
+        <span class="price-mid">${mid.toFixed(2)} ${arrow}</span>
+        <span class="price-ba">
+          <span class="bid">B:${bid.toFixed(2)}</span>
+          &nbsp;/&nbsp;
+          <span class="ask">A:${ask.toFixed(2)}</span>
+        </span>
+        <span class="price-ba">spread:${spread}</span>
+      </div>`;
+
+    if (flashClass) {
+      cell.classList.remove('flash-up', 'flash-down');
+      void cell.offsetWidth; // force reflow for animation restart
+      cell.classList.add(flashClass);
+    }
+
+    document.getElementById('footer').textContent =
+      'Last update: ' + new Date().toLocaleTimeString();
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function setStatus(cls, text) {
+    const el = document.getElementById('status');
+    el.className = cls;
+    el.innerHTML = text;
+  }
+
+  // ── Load presets from backend (application.properties) ──────────────────
+  function loadPresets() {
+    fetch('/api/config/presets')
+      .then(r => r.json())
+      .then(presets => {
+        const container = document.getElementById('presetButtons');
+        container.innerHTML = '';
+        presets.forEach((p, i) => {
+          const btn = document.createElement('button');
+          btn.className = 'preset-btn' + (i === 0 ? ' active' : '');
+          btn.textContent = p.label;
+          btn.onclick = () => applyPreset(p, btn);
+          container.appendChild(btn);
+          if (i === 0) applyPreset(p, btn);   // auto-select first preset
+        });
+      })
+      .catch(() => {
+        document.getElementById('presetButtons').textContent = '(presets unavailable)';
+      });
+  }
+
+  function applyPreset(preset, btn) {
+    document.getElementById('symbolsInput').value = preset.symbols;
+    const sel = document.getElementById('assetTypeSelect');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === preset.assetType) { sel.selectedIndex = i; break; }
+    }
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+
+  // Auto-connect WebSocket on page load (subscribe still requires button click)
+  connectWebSocket();
+  loadPresets();
+
+  // ── P&L Analytics Chart ───────────────────────────────────────────────────
+
+  let pnlChart = null;
+  const MAX_CHART_POINTS = 300;
+  let analyticsSubscribed = false;
+
+  function initPnlChart() {
+    const ctx = document.getElementById('pnlCanvas').getContext('2d');
+    pnlChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Cumulative P&L (€)',
+          data: [],
+          borderColor: '#3fb950',
+          backgroundColor: 'rgba(63,185,80,0.07)',
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: {
+            ticks: { color: '#484f58', maxTicksLimit: 10, font: { size: 10 } },
+            grid: { color: '#21262d' }
+          },
+          y: {
+            ticks: {
+              color: '#8b949e',
+              font: { size: 11 },
+              callback: v => (v >= 0 ? '+' : '') + '€' + v.toFixed(2)
+            },
+            grid: { color: '#21262d' }
+          }
+        },
+        plugins: {
+          legend: { labels: { color: '#8b949e', font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => 'P&L: ' + (ctx.raw >= 0 ? '+' : '') + '€' + ctx.raw.toFixed(2)
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function addChartPoint(event) {
+    if (!pnlChart) return;
+    const labels = pnlChart.data.labels;
+    const data   = pnlChart.data.datasets[0].data;
+
+    const t = new Date(event.timestamp);
+    const label = t.toLocaleTimeString('en-GB', { hour12: false });
+    labels.push(label);
+    data.push(parseFloat((event.cumPnl || 0).toFixed(4)));
+
+    if (labels.length > MAX_CHART_POINTS) { labels.shift(); data.shift(); }
+
+    const latest = data[data.length - 1];
+    const isUp   = latest >= 0;
+    pnlChart.data.datasets[0].borderColor       = isUp ? '#3fb950' : '#f85149';
+    pnlChart.data.datasets[0].backgroundColor   = isUp
+      ? 'rgba(63,185,80,0.07)' : 'rgba(248,81,73,0.07)';
+
+    pnlChart.update('none');
+    updateStatsBanner(event);
+
+    if (event.action === 'BUY' || event.action === 'SELL') {
+      addTradeLogRow(event);
+    }
+  }
+
+  function updateStatsBanner(event) {
+    const fmt   = n => (n >= 0 ? '+' : '') + '€' + Math.abs(n).toFixed(2);
+    const color = n => n >= 0 ? '#3fb950' : '#f85149';
+    const r = event.realizedPnl   || 0;
+    const u = event.unrealizedPnl || 0;
+    const c = event.cumPnl        || 0;
+    document.getElementById('stat-realized').innerHTML   = `<span style="color:${color(r)}">${fmt(r)}</span>`;
+    document.getElementById('stat-unrealized').innerHTML = `<span style="color:${color(u)}">${fmt(u)}</span>`;
+    document.getElementById('stat-total').innerHTML      = `<span style="color:${color(c)}">${fmt(c)}</span>`;
+    document.getElementById('stat-trades').textContent   = event.tradeCount || 0;
+    const wr = event.winRate;
+    document.getElementById('stat-winrate').textContent  = wr != null ? wr.toFixed(1) + '%' : '—';
+  }
+
+  function addTradeLogRow(event) {
+    const tbody = document.getElementById('tradeLog');
+    const isBuy = event.action === 'BUY';
+    const row   = document.createElement('tr');
+    const t     = new Date(event.timestamp).toLocaleTimeString('en-GB', { hour12: false });
+    const cum   = (event.cumPnl || 0);
+    row.innerHTML = `
+      <td style="text-align:left;color:#484f58">${t}</td>
+      <td style="text-align:left">${event.symbol || ''}</td>
+      <td style="color:${isBuy ? '#3fb950' : '#f85149'};font-weight:bold">${event.action}</td>
+      <td>${(event.price || 0).toFixed(2)}</td>
+      <td style="color:${cum >= 0 ? '#3fb950' : '#f85149'}">${cum >= 0 ? '+' : ''}€${cum.toFixed(2)}</td>`;
+    tbody.insertBefore(row, tbody.firstChild);
+    while (tbody.children.length > 50) tbody.removeChild(tbody.lastChild);
+  }
+
+  function subscribeAnalytics() {
+    if (analyticsSubscribed || !stompClient || !stompClient.connected) return;
+    analyticsSubscribed = true;
+    stompClient.subscribe('/topic/analytics', msg => addChartPoint(JSON.parse(msg.body)));
+    fetch('/api/analytics/history?limit=200')
+      .then(r => r.json())
+      .then(events => events.forEach(addChartPoint))
+      .catch(() => {});
+  }
+
+  // Init chart on page load
+  initPnlChart();
+
+  // ── Instrument Browser ────────────────────────────────────────────────────
+
+  let _browseTop = 20;
+  let _debounceTimer = null;
+
+  function onBrowseKeywordInput() {
+    clearTimeout(_debounceTimer);
+    const kw = document.getElementById('browseKeyword').value.trim();
+    if (kw.length >= 2) _debounceTimer = setTimeout(() => browseInstruments(0), 400);
+  }
+
+  function browseInstruments(skip) {
+    const keyword      = document.getElementById('browseKeyword').value.trim();
+    const assetType    = document.getElementById('browseAssetType').value;
+    const exchange     = document.getElementById('browseExchange').value.trim();
+    _browseTop         = parseInt(document.getElementById('browseTop').value) || 20;
+    const nonTradable  = document.getElementById('browseNonTradable').checked;
+
+    let url = `/api/instruments/browse?top=${_browseTop}`;
+    if (skip)        url += `&skip=${skip}`;
+    if (keyword)     url += `&keywords=${encodeURIComponent(keyword)}`;
+    if (assetType)   url += `&assetTypes=${assetType}`;
+    if (exchange)    url += `&exchangeId=${encodeURIComponent(exchange)}`;
+    if (nonTradable) url += `&includeNonTradable=true`;
+
+    document.getElementById('browseResults').innerHTML =
+      '<span style="color:#484f58;font-size:12px">Searching…</span>';
+    document.getElementById('browsePager').innerHTML = '';
+
+    fetch(url)
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(data => renderBrowseResults(data, skip))
+      .catch(err => {
+        document.getElementById('browseResults').innerHTML =
+          `<span style="color:#f85149;font-size:12px">Error: ${err.message}</span>`;
+      });
+  }
+
+  function renderBrowseResults(data, skip) {
+    const items = data.Data || [];
+    if (items.length === 0) {
+      document.getElementById('browseResults').innerHTML =
+        '<span style="color:#484f58;font-size:12px">No instruments found. Try a different keyword or asset type.</span>';
+      return;
+    }
+    const count = data['__count'] || data['__Count'] || '';
+    const rows = items.map(item => {
+      const uic  = item.Identifier || 0;
+      const sym  = (item.Description || item.Symbol || '').replace(/'/g, "\\'");
+      const at   = item.AssetType || '';
+      return `<tr>
+        <td>${uic}</td>
+        <td>${item.Symbol || ''}</td>
+        <td style="text-align:left;max-width:260px;overflow:hidden;text-overflow:ellipsis">${item.Description || ''}</td>
+        <td>${at}</td>
+        <td>${item.CurrencyCode || ''}</td>
+        <td style="display:flex;gap:5px;justify-content:center;">
+          <button class="use-btn" onclick="useInstrument('${sym}','${at}')">+ Use</button>
+          <button class="use-btn stream-btn" onclick="streamInstrument(${uic},'${sym}','${at}')">&#9654; Stream</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('browseResults').innerHTML = `
+      <div style="font-size:11px;color:#484f58;margin:6px 0">
+        ${skip + 1}–${skip + items.length}${count ? ' of ' + count : ''}
+        &nbsp;·&nbsp; click <b>+ Use</b> to copy instrument to the symbols bar
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>UIC</th><th>Symbol</th><th style="text-align:left">Description</th>
+          <th>Asset Type</th><th>Currency</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+
+    // Pagination
+    const pager = document.getElementById('browsePager');
+    pager.innerHTML = '';
+    if (skip > 0) {
+      const b = document.createElement('button');
+      b.className = 'preset-btn'; b.textContent = '← Prev';
+      b.onclick = () => browseInstruments(skip - _browseTop);
+      pager.appendChild(b);
+    }
+    if (items.length === _browseTop) {
+      const b = document.createElement('button');
+      b.className = 'preset-btn'; b.textContent = 'Next →';
+      b.onclick = () => browseInstruments(skip + _browseTop);
+      pager.appendChild(b);
+    }
+  }
+
+  function useInstrument(description, assetType) {
+    const inp = document.getElementById('symbolsInput');
+    inp.value = inp.value.trim()
+      ? inp.value.trim() + ',' + description
+      : description;
+    const sel = document.getElementById('assetTypeSelect');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === assetType) { sel.selectedIndex = i; break; }
+    }
+    document.querySelector('header').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function streamInstrument(uic, description, at) {
+    symbols   = [description];
+    assetType = at;
+    prevMid   = {};
+    buildTable();
+
+    document.querySelector('details.browser').open = false;
+    document.querySelector('header').scrollIntoView({ behavior: 'smooth' });
+
+    const doDirectSubscribe = () => {
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('startBtn').textContent = 'Streaming...';
+      setStatus('connecting', 'Subscribing...');
+
+      fetch(`/api/stream/subscribe/direct?uics=${uic}&symbolNames=${encodeURIComponent(description)}&assetType=${encodeURIComponent(at)}`, {
+        method: 'POST'
+      })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(() => {
+        setStatus('live', 'LIVE &#9679;');
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').textContent = 'Restart';
+      })
+      .catch(err => {
+        setStatus('error', 'Error: ' + err.message);
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').textContent = 'Start Streaming';
+      });
+    };
+
+    if (stompClient && stompClient.connected) {
+      doDirectSubscribe();
+    } else {
+      const socket = new SockJS('/ws');
+      stompClient = Stomp.over(socket);
+      stompClient.debug = null;
+      setStatus('connecting', 'Connecting...');
+      stompClient.connect({}, function () {
+        setStatus('live', 'WS Connected');
+        subscription = stompClient.subscribe('/topic/prices', function (msg) {
+          updateCell(JSON.parse(msg.body));
+        });
+        doDirectSubscribe();
+      }, function (err) {
+        setStatus('error', 'WS Error: ' + err);
+      });
+    }
+  }
+</script>
+
+</body>
+</html>

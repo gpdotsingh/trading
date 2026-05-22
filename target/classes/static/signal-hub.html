@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Signal Hub — TrendSpider Alerts</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+
+    .header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header .badge {
+      font-size: 11px;
+      background: #1f6feb;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #f85149; display: inline-block; margin-right: 6px;
+    }
+    .dot.connected { background: #3fb950; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .container { max-width: 900px; margin: 32px auto; padding: 0 24px; }
+
+    /* ── Setup card ── */
+    .setup-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .setup-card h2 { font-size: 15px; color: #8b949e; margin-bottom: 16px; text-transform: uppercase; letter-spacing: .05em; }
+
+    .url-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .url-box {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #79c0ff;
+      word-break: break-all;
+    }
+    .url-box.empty { color: #6e7681; font-style: italic; }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-blue  { background: #1f6feb; color: #fff; }
+    .btn-green { background: #238636; color: #fff; }
+    .btn-gray  { background: #21262d; color: #e6edf3; border: 1px solid #30363d; }
+
+    .secret-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .secret-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #e6edf3;
+    }
+    .secret-input:focus { outline: none; border-color: #1f6feb; }
+    .hint { font-size: 12px; color: #6e7681; margin-top: 6px; }
+
+    /* ── Steps ── */
+    .steps { margin-top: 20px; }
+    .step {
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid #21262d;
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 26px; height: 26px;
+      background: #1f6feb;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .step-body { flex: 1; }
+    .step-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .step-desc { font-size: 13px; color: #8b949e; line-height: 1.5; }
+    code {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #79c0ff;
+    }
+    pre {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #a5d6ff;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    /* ── Alert feed ── */
+    .feed-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .feed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .feed-header h2 { font-size: 15px; color: #8b949e; text-transform: uppercase; letter-spacing: .05em; }
+    .counter {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 0;
+      color: #6e7681;
+      font-size: 14px;
+    }
+    .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+
+    .alert-item {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: start;
+      animation: slideIn .2s ease;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+
+    .alert-item.buy  { border-left: 3px solid #3fb950; }
+    .alert-item.sell { border-left: 3px solid #f85149; }
+    .alert-item.hold { border-left: 3px solid #d29922; }
+
+    .signal-badge {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+    }
+    .signal-badge.BUY  { background: #1a4728; color: #3fb950; }
+    .signal-badge.SELL { background: #3d1f21; color: #f85149; }
+    .signal-badge.HOLD { background: #312d00; color: #d29922; }
+
+    .alert-meta { font-size: 12px; color: #8b949e; line-height: 1.8; }
+    .alert-meta strong { color: #e6edf3; }
+    .alert-time { font-size: 11px; color: #6e7681; text-align: right; white-space: nowrap; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #8b949e;
+    }
+
+    .ngrok-banner {
+      background: #1c2128;
+      border: 1px solid #388bfd40;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #79c0ff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ngrok-banner .label { color: #8b949e; margin-right: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <span><span class="dot" id="statusDot"></span></span>
+  <h1>Signal Hub</h1>
+  <span class="badge">Live</span>
+  <span style="margin-left:auto; font-size:13px; color:#8b949e;" id="statusText">Connecting…</span>
+</div>
+
+<div class="container">
+
+  <!-- ngrok URL banner (auto-detected) -->
+  <div class="ngrok-banner" id="ngrokBanner" style="display:none">
+    <span>🌐</span>
+    <span><span class="label">Public URL:</span><span id="ngrokPublicUrl"></span></span>
+    <button class="btn btn-gray" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="copyNgrok()">Copy</button>
+  </div>
+
+  <!-- Setup card -->
+  <div class="setup-card">
+    <h2>Webhook Setup</h2>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;color:#8b949e;display:block;margin-bottom:6px">
+        Webhook URL — paste this into TrendSpider
+      </label>
+      <div class="url-row">
+        <div class="url-box empty" id="webhookUrlDisplay">
+          Run ngrok to get your public URL (see Step 1 below)
+        </div>
+        <button class="btn btn-blue" onclick="copyWebhookUrl()">Copy</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;color:#8b949e;display:block;margin-bottom:6px">
+        Security Key — set this in <code>application.properties</code> and add to your URL
+      </label>
+      <div class="secret-row">
+        <input class="secret-input" id="secretInput" type="text"
+               placeholder="e.g. ts-secret-abc123"
+               value="" />
+        <button class="btn btn-green" onclick="applySecret()">Apply</button>
+        <button class="btn btn-gray" onclick="generateSecret()">Generate</button>
+      </div>
+      <div class="hint">
+        After setting, add <code>?secret=YOUR_KEY</code> to the webhook URL in TrendSpider
+      </div>
+    </div>
+
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Start ngrok to get a public URL</div>
+          <div class="step-desc">
+            Run this in a terminal (Spring Boot must be running on port 8080 first):
+          </div>
+          <pre>ngrok http 8080</pre>
+          <div class="step-desc" style="margin-top:8px">
+            Copy the <code>https://xxxx.ngrok-free.app</code> URL it shows.
+            Paste it into the Webhook URL box above.
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Set your security key</div>
+          <div class="step-desc">
+            Generate a key above, then open <code>application.properties</code> and set:
+          </div>
+          <pre>trendspider.webhook.secret=YOUR_KEY_HERE</pre>
+          <div class="step-desc" style="margin-top:8px">Restart Spring Boot after changing it.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Open TrendSpider → Create Alert</div>
+          <div class="step-desc">
+            Go to your Gold/Silver/Oil/US100 chart →
+            Click the <strong>Alert</strong> button (bell icon) →
+            Set your TA condition → scroll to <strong>Webhook</strong> tab.
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Paste into TrendSpider Webhook tab</div>
+          <div class="step-desc">URL field:</div>
+          <pre id="tsUrlExample">https://YOUR-NGROK-URL/api/webhook/trendspider?secret=YOUR_KEY</pre>
+          <div class="step-desc" style="margin-top:8px">Body field (copy exactly):</div>
+          <pre>{
+  "ticker":    "{{ticker}}",
+  "price":     {{close}},
+  "action":    "BUY",
+  "alertName": "{{alert_name}}",
+  "interval":  "{{interval}}",
+  "message":   "{{alert_message}}",
+  "timestamp": "{{time}}"
+}</pre>
+          <div class="step-desc" style="margin-top:8px">
+            For a SELL signal, create a second alert with <code>"action": "SELL"</code>.
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Test it</div>
+          <div class="step-desc">
+            Click <strong>Test Webhook</strong> in TrendSpider.
+            The alert will appear in the Live Feed below instantly.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Live feed -->
+  <div class="feed-card">
+    <div class="feed-header">
+      <h2>Live Alert Feed</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="counter" id="alertCounter">0 alerts</span>
+        <button class="btn btn-gray" style="padding:4px 10px;font-size:12px" onclick="clearFeed()">Clear</button>
+      </div>
+    </div>
+
+    <div id="alertFeed">
+      <div class="empty-state">
+        <div class="icon">📡</div>
+        <div>Waiting for TrendSpider alerts…</div>
+        <div style="margin-top:6px;font-size:12px">Complete the setup above, then fire a test alert in TrendSpider</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let alertCount = 0;
+  let stompClient = null;
+  let ngrokUrl = null;
+  let secretKey = '';
+
+  // ── WebSocket connection ──────────────────────────────────────────────────
+
+  function connect() {
+    const sock = new SockJS('/ws');
+    stompClient = Stomp.over(sock);
+    stompClient.debug = null;
+
+    stompClient.connect({}, () => {
+      setStatus(true);
+      stompClient.subscribe('/topic/trendspider', msg => {
+        try { renderAlert(JSON.parse(msg.body)); } catch(e) {}
+      });
+    }, () => {
+      setStatus(false);
+      setTimeout(connect, 3000);
+    });
+  }
+
+  function setStatus(connected) {
+    document.getElementById('statusDot').className = 'dot' + (connected ? ' connected' : '');
+    document.getElementById('statusText').textContent = connected ? 'Connected' : 'Disconnected — retrying…';
+  }
+
+  // ── Alert rendering ───────────────────────────────────────────────────────
+
+  function renderAlert(data) {
+    alertCount++;
+    document.getElementById('alertCounter').textContent = alertCount + ' alert' + (alertCount !== 1 ? 's' : '');
+
+    const feed = document.getElementById('alertFeed');
+    const empty = feed.querySelector('.empty-state');
+    if (empty) empty.remove();
+
+    const action = (data.action || 'HOLD').toUpperCase();
+    const sideClass = action === 'BUY' ? 'buy' : action === 'SELL' ? 'sell' : 'hold';
+
+    const time = new Date().toLocaleTimeString();
+
+    const item = document.createElement('div');
+    item.className = `alert-item ${sideClass}`;
+    item.innerHTML = `
+      <span class="signal-badge ${action}">${action}</span>
+      <div class="alert-meta">
+        <strong>${data.ticker || data.symbol || '—'}</strong>
+        &nbsp;·&nbsp; Price: <strong>${data.price ? Number(data.price).toLocaleString() : '—'}</strong>
+        &nbsp;·&nbsp; Alert: <strong>${data.alertName || '—'}</strong>
+        <br>
+        ${data.message ? `<span style="color:#8b949e">${data.message}</span>` : ''}
+        ${data.interval ? `<span style="color:#6e7681"> · ${data.interval}</span>` : ''}
+      </div>
+      <div class="alert-time">${time}</div>
+    `;
+
+    feed.insertBefore(item, feed.firstChild);
+  }
+
+  // ── URL / secret helpers ──────────────────────────────────────────────────
+
+  function getBaseUrl() {
+    return ngrokUrl || (window.location.protocol + '//' + window.location.host);
+  }
+
+  function buildWebhookUrl() {
+    const base = getBaseUrl();
+    const secret = document.getElementById('secretInput').value.trim();
+    return base + '/api/webhook/trendspider' + (secret ? '?secret=' + secret : '');
+  }
+
+  function refreshUrlDisplay() {
+    const url = buildWebhookUrl();
+    const box = document.getElementById('webhookUrlDisplay');
+    box.textContent = url;
+    box.classList.remove('empty');
+    document.getElementById('tsUrlExample').textContent = url;
+  }
+
+  function applySecret() {
+    secretKey = document.getElementById('secretInput').value.trim();
+    refreshUrlDisplay();
+    alert('URL updated! Remember to set trendspider.webhook.secret=' + secretKey + ' in application.properties and restart Spring Boot.');
+  }
+
+  function generateSecret() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let key = 'ts-';
+    for (let i = 0; i < 16; i++) key += chars[Math.floor(Math.random() * chars.length)];
+    document.getElementById('secretInput').value = key;
+    refreshUrlDisplay();
+  }
+
+  function copyWebhookUrl() {
+    navigator.clipboard.writeText(buildWebhookUrl()).then(() => {
+      const btn = event.target;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    });
+  }
+
+  function copyNgrok() {
+    const url = document.getElementById('ngrokPublicUrl').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = event.target;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    });
+  }
+
+  function clearFeed() {
+    alertCount = 0;
+    document.getElementById('alertCounter').textContent = '0 alerts';
+    document.getElementById('alertFeed').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📡</div>
+        <div>Waiting for TrendSpider alerts…</div>
+        <div style="margin-top:6px;font-size:12px">Complete the setup above, then fire a test alert in TrendSpider</div>
+      </div>`;
+  }
+
+  // ── Fetch ngrok URL from Spring Boot (java-ngrok started on app startup) ──
+
+  async function detectNgrok() {
+    try {
+      const res = await fetch('/api/ngrok/url');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.url && data.active === 'true') {
+        ngrokUrl = data.url;
+        // show banner with the full ready-to-use webhook URL
+        document.getElementById('ngrokPublicUrl').textContent = data.webhookUrl || (ngrokUrl + '/api/webhook/trendspider');
+        document.getElementById('ngrokBanner').style.display = 'flex';
+        // fill webhook URL display with the server-provided full URL (includes secret)
+        const box = document.getElementById('webhookUrlDisplay');
+        box.textContent = data.webhookUrl || ngrokUrl + '/api/webhook/trendspider';
+        box.classList.remove('empty');
+        document.getElementById('tsUrlExample').textContent = box.textContent;
+      }
+    } catch {}
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  refreshUrlDisplay();
+  connect();
+  detectNgrok();
+  setInterval(detectNgrok, 10000); // re-check ngrok every 10s
+</script>
+</body>
+</html>
