@@ -8,26 +8,44 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Manages the Capital.com session lifecycle (CST + X-SECURITY-TOKEN)
- * and provides the authenticated HTTP helpers used by CapitalComService.
+ * Manages the Capital.com session lifecycle (CST + X-SECURITY-TOKEN).
+ * Sessions expire after ~10 minutes; we proactively refresh after 9 minutes.
+ * A 429 rate-limit on the auth endpoint is handled with a 10-second cooldown.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CapitalSessionManager {
 
+    /** Capital.com demo sessions last ~10 minutes; refresh proactively after 9. */
+    private static final long SESSION_TTL_MS   = 9 * 60 * 1000L;
+    /** Minimum gap between createSession() calls to avoid hammering the auth endpoint. */
+    private static final long AUTH_COOLDOWN_MS = 10_000L;
+
     private final CapitalComConfig config;
     private final RestTemplate     restTemplate;
 
     private final AtomicReference<String> cst           = new AtomicReference<>();
     private final AtomicReference<String> securityToken = new AtomicReference<>();
+    private final AtomicLong sessionCreatedAt  = new AtomicLong(0);
+    private final AtomicLong lastAuthAttemptAt = new AtomicLong(0);
 
-    public void createSession() {
+    public synchronized void createSession() {
+        long now = System.currentTimeMillis();
+        long sinceLastAttempt = now - lastAuthAttemptAt.get();
+        if (sinceLastAttempt < AUTH_COOLDOWN_MS) {
+            log.warn("Auth cooldown active — skipping createSession() ({}ms since last attempt)", sinceLastAttempt);
+            return;
+        }
+        lastAuthAttemptAt.set(now);
+
         Map<String, String> body = new HashMap<>();
         body.put("identifier", config.getIdentifier());
         body.put("password",   config.getPassword());
@@ -39,22 +57,33 @@ public class CapitalSessionManager {
         ResponseEntity<Map<String, Object>> response = exchange("/api/v1/session", HttpMethod.POST, headers, body);
         cst.set(response.getHeaders().getFirst("CST"));
         securityToken.set(response.getHeaders().getFirst("X-SECURITY-TOKEN"));
+        sessionCreatedAt.set(System.currentTimeMillis());
         log.info("Capital.com session created (demo={})", config.isDemo());
     }
 
     public void ensureSession() {
-        if (cst.get() == null || securityToken.get() == null) createSession();
+        boolean missing  = cst.get() == null || securityToken.get() == null;
+        boolean expired  = (System.currentTimeMillis() - sessionCreatedAt.get()) > SESSION_TTL_MS;
+        if (missing || expired) createSession();
     }
 
     public Map<String, Object> get(String path) {
-        return exchange(path, HttpMethod.GET, authHeaders(), null).getBody();
+        try {
+            return exchange(path, HttpMethod.GET, authHeaders(), null).getBody();
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("Capital.com session expired (GET) — refreshing");
+            invalidateSession();
+            createSession();
+            return exchange(path, HttpMethod.GET, authHeaders(), null).getBody();
+        }
     }
 
     public Map<String, Object> post(String path, Object body) {
         try {
             return exchange(path, HttpMethod.POST, authHeaders(), body).getBody();
         } catch (HttpClientErrorException.Unauthorized e) {
-            log.warn("Capital.com session expired — refreshing");
+            log.warn("Capital.com session expired (POST) — refreshing");
+            invalidateSession();
             createSession();
             return exchange(path, HttpMethod.POST, authHeaders(), body).getBody();
         }
@@ -68,6 +97,12 @@ public class CapitalSessionManager {
     public void put(String path, Object body) {
         restTemplate.exchange(config.getBaseUrl() + path, HttpMethod.PUT,
                 new HttpEntity<>(body, authHeaders()), Void.class);
+    }
+
+    private void invalidateSession() {
+        cst.set(null);
+        securityToken.set(null);
+        sessionCreatedAt.set(0);
     }
 
     private HttpHeaders authHeaders() {

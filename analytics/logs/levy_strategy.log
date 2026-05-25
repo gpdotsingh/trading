@@ -11717,3 +11717,241 @@
 2026-05-23 01:16:09,543 - __main__ - INFO - Shutdown signal 2 received
 2026-05-23 01:16:09,544 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
 2026-05-23 01:16:09,545 - __main__ - INFO - Disconnected — final report:
+2026-05-25 01:47:27,108 - __main__ - INFO - === Lévy Trend-Following Strategy (dynamic momentum) ===
+2026-05-25 01:47:27,109 - __main__ - INFO - Config: /Users/gauravsingh/study/stockmarket/ib-cfd-api/analytics/config/strategy.properties
+2026-05-25 01:47:27,109 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/789/75973890/websocket
+2026-05-25 01:47:27,109 - __main__ - INFO - Strategy running — Ctrl-C to stop and see final P&L report
+2026-05-25 01:47:27,111 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 01:47:27,111 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 01:47:27,111 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 01:47:27,111 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (1/10) in 5s …
+2026-05-25 01:47:32,116 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/988/1f663bfa/websocket
+2026-05-25 01:47:32,118 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 01:47:32,118 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 01:47:32,118 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 01:47:32,118 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (2/10) in 5s …
+2026-05-25 01:47:37,123 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/099/840f1c90/websocket
+2026-05-25 01:47:37,181 - websocket - INFO - Websocket connected
+2026-05-25 01:47:37,200 - src.websocket_client.sockjs_stomp_client - INFO - STOMP connected
+2026-05-25 01:47:37,200 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/prices
+2026-05-25 01:47:37,200 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/trendspider
+2026-05-25 01:47:37,200 - __main__ - INFO - Subscribed → /topic/prices  (Lévy momentum)
+2026-05-25 01:47:37,200 - __main__ - INFO - Subscribed → /topic/trendspider  (TrendSpider signals)
+2026-05-25 01:47:57,115 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:48:11,701 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: 1001 
+2026-05-25 01:48:11,701 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (1/10) in 5s …
+2026-05-25 01:48:16,708 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/398/0d3d5fb9/websocket
+2026-05-25 01:48:17,260 - websocket - INFO - Websocket connected
+2026-05-25 01:48:17,384 - src.websocket_client.sockjs_stomp_client - INFO - STOMP connected
+2026-05-25 01:48:17,384 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/prices
+2026-05-25 01:48:17,385 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/trendspider
+2026-05-25 01:48:17,385 - __main__ - INFO - Subscribed → /topic/prices  (Lévy momentum)
+2026-05-25 01:48:17,385 - __main__ - INFO - Subscribed → /topic/trendspider  (TrendSpider signals)
+2026-05-25 01:48:27,120 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:48:57,126 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:49:27,130 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:49:57,137 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:50:27,144 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:50:57,152 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:51:27,156 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:51:57,164 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:52:27,171 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:52:57,177 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:53:27,183 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:53:57,186 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:54:27,189 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:54:57,192 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:55:27,198 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:55:57,205 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:56:27,215 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:56:57,220 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:57:27,229 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:57:57,235 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:58:27,238 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:58:57,243 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:59:27,247 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 01:59:57,251 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:00:27,258 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:00:57,264 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:01:27,266 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:01:57,273 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:02:27,279 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:02:57,286 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:03:27,290 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:03:57,295 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:04:27,302 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:04:57,304 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:05:27,306 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:05:57,313 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:06:27,318 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:06:57,322 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:07:27,326 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:07:57,332 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:08:27,334 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:08:57,339 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:09:27,342 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:09:57,346 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:10:27,350 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:10:57,354 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:11:27,358 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:11:57,362 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:12:27,365 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:12:57,370 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:13:27,376 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:13:57,379 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:14:27,385 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:14:57,392 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:15:27,396 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:15:57,402 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:16:27,409 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:16:57,414 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:17:27,418 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:17:57,420 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:18:27,426 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:18:57,430 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:19:27,436 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:19:57,442 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:20:27,448 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:20:57,454 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:21:27,460 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:21:57,467 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:22:28,308 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:22:58,574 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:23:28,578 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:23:58,585 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:24:28,675 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:24:58,682 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:25:28,689 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:25:58,695 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:26:28,702 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:26:58,709 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:27:28,717 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:27:32,544 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: 1001 
+2026-05-25 02:27:32,544 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (1/10) in 5s …
+2026-05-25 02:27:37,553 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/131/7e29130d/websocket
+2026-05-25 02:27:37,573 - websocket - INFO - Websocket connected
+2026-05-25 02:27:37,587 - src.websocket_client.sockjs_stomp_client - INFO - STOMP connected
+2026-05-25 02:27:37,588 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/prices
+2026-05-25 02:27:37,588 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/trendspider
+2026-05-25 02:27:37,588 - __main__ - INFO - Subscribed → /topic/prices  (Lévy momentum)
+2026-05-25 02:27:37,588 - __main__ - INFO - Subscribed → /topic/trendspider  (TrendSpider signals)
+2026-05-25 02:27:58,723 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:28:00,558 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: 1001 
+2026-05-25 02:28:00,558 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (1/10) in 5s …
+2026-05-25 02:28:05,560 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/257/1738798d/websocket
+2026-05-25 02:28:05,640 - websocket - INFO - Websocket connected
+2026-05-25 02:28:05,661 - src.websocket_client.sockjs_stomp_client - INFO - STOMP connected
+2026-05-25 02:28:05,661 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/prices
+2026-05-25 02:28:05,661 - src.websocket_client.sockjs_stomp_client - INFO - Subscribed → /topic/trendspider
+2026-05-25 02:28:05,661 - __main__ - INFO - Subscribed → /topic/prices  (Lévy momentum)
+2026-05-25 02:28:05,661 - __main__ - INFO - Subscribed → /topic/trendspider  (TrendSpider signals)
+2026-05-25 02:28:28,726 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:28:56,304 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: 1001 
+2026-05-25 02:28:56,305 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (1/10) in 5s …
+2026-05-25 02:28:58,730 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:29:01,312 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/155/eb549ad0/websocket
+2026-05-25 02:29:01,318 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:01,318 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:01,319 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:01,319 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (2/10) in 5s …
+2026-05-25 02:29:06,324 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/294/da6b2b04/websocket
+2026-05-25 02:29:06,328 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:06,329 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:06,329 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:06,329 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (3/10) in 5s …
+2026-05-25 02:29:11,334 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/091/10477f09/websocket
+2026-05-25 02:29:11,336 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:11,336 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:11,337 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:11,337 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (4/10) in 5s …
+2026-05-25 02:29:16,342 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/628/c83fdde9/websocket
+2026-05-25 02:29:16,344 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:16,345 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:16,345 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:16,345 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (5/10) in 5s …
+2026-05-25 02:29:21,351 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/683/0d7ca3e3/websocket
+2026-05-25 02:29:21,354 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:21,354 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:21,354 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:21,354 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (6/10) in 5s …
+2026-05-25 02:29:26,363 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/696/b7a6e38c/websocket
+2026-05-25 02:29:26,366 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:26,367 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:26,367 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:26,367 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (7/10) in 5s …
+2026-05-25 02:29:28,732 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:29:31,373 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/974/deafc75a/websocket
+2026-05-25 02:29:31,375 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:31,375 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:31,375 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:31,376 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (8/10) in 5s …
+2026-05-25 02:29:36,377 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/438/26f3443a/websocket
+2026-05-25 02:29:36,379 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:36,379 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:36,379 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:36,379 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (9/10) in 5s …
+2026-05-25 02:29:41,385 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/368/5397122f/websocket
+2026-05-25 02:29:41,387 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:41,387 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:41,388 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:41,388 - src.websocket_client.sockjs_stomp_client - INFO - Reconnecting (10/10) in 5s …
+2026-05-25 02:29:46,393 - src.websocket_client.sockjs_stomp_client - INFO - Connecting → ws://localhost:8080/ws/560/47a03098/websocket
+2026-05-25 02:29:46,398 - src.websocket_client.sockjs_stomp_client - ERROR - WebSocket error: [Errno 61] Connection refused
+2026-05-25 02:29:46,398 - websocket - ERROR - [Errno 61] Connection refused - goodbye
+2026-05-25 02:29:46,398 - src.websocket_client.sockjs_stomp_client - WARNING - WebSocket closed: None None
+2026-05-25 02:29:46,398 - src.websocket_client.sockjs_stomp_client - ERROR - Max reconnect attempts (10) reached
+2026-05-25 02:29:58,734 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:30:28,738 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:30:58,741 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:31:28,744 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:31:58,751 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:32:28,757 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:32:58,764 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:33:28,775 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:33:58,785 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:34:28,788 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:34:58,793 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:35:28,797 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:35:58,804 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:36:28,812 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:36:58,820 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:37:28,850 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:37:58,858 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:38:28,867 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:38:58,877 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:39:28,882 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:39:58,889 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:40:28,899 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:40:58,905 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:41:28,909 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:41:58,915 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:42:28,920 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:42:58,926 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:43:28,934 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:43:58,949 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:44:28,952 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:44:58,956 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:45:28,962 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:45:58,964 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:46:28,968 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:46:59,003 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:47:29,008 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:47:59,014 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:48:29,022 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:48:59,026 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:49:29,037 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:49:59,042 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:50:29,049 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:50:59,052 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:51:29,060 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:51:59,073 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:52:29,079 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:52:59,092 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:53:29,130 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:53:59,140 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:54:29,146 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:54:59,147 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:55:29,151 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:55:59,157 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:56:29,162 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}
+2026-05-25 02:56:59,170 - __main__ - INFO - ws-stats={'messages_received': 0, 'parse_errors': 0, 'success_rate': 0.0}  ts-stats={'alerts_received': 0, 'parse_errors': 0}

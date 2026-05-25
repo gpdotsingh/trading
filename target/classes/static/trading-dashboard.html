@@ -574,12 +574,14 @@
                   <th>Entry</th>
                   <th>Current</th>
                   <th>P&amp;L</th>
+                  <th>Stop Loss</th>
+                  <th>Take Profit</th>
                   <th>Deal ID</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody id="capitalOpenBody">
-                <tr class="empty-row"><td colspan="8">Loading…</td></tr>
+                <tr class="empty-row"><td colspan="10">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -680,6 +682,47 @@
   </div>
 
 </div><!-- /page -->
+
+<!-- SL/TP Dialog -->
+<div id="sl-dialog-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.5)">
+    <div style="font-size:15px;font-weight:700;color:#e6edf3;margin-bottom:4px">🛡 Set Stop Loss / Take Profit</div>
+    <div id="sl-dialog-name" style="font-size:12px;color:#8b949e;margin-bottom:16px"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <!-- Stop Loss -->
+      <div>
+        <div style="font-size:10px;color:#f85149;text-transform:uppercase;font-weight:600;margin-bottom:4px">Stop Loss</div>
+        <input id="sl-price-input" type="number" step="any" placeholder="Price"
+          oninput="slPriceToPercent()"
+          style="width:100%;background:#21262d;border:1px solid #da3633;color:#e6edf3;padding:6px 8px;border-radius:6px;font-size:13px;box-sizing:border-box">
+        <input id="sl-pct-input" type="number" step="any" placeholder="% from entry"
+          oninput="slPercentToPrice()"
+          style="width:100%;margin-top:5px;background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:6px 8px;border-radius:6px;font-size:12px;box-sizing:border-box">
+        <div id="sl-existing" style="font-size:10px;color:#6e7681;margin-top:3px"></div>
+      </div>
+      <!-- Take Profit -->
+      <div>
+        <div style="font-size:10px;color:#3fb950;text-transform:uppercase;font-weight:600;margin-bottom:4px">Take Profit</div>
+        <input id="tp-price-input" type="number" step="any" placeholder="Price (optional)"
+          oninput="tpPriceToPercent()"
+          style="width:100%;background:#21262d;border:1px solid #238636;color:#e6edf3;padding:6px 8px;border-radius:6px;font-size:13px;box-sizing:border-box">
+        <input id="tp-pct-input" type="number" step="any" placeholder="% from entry"
+          oninput="tpPercentToPrice()"
+          style="width:100%;margin-top:5px;background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:6px 8px;border-radius:6px;font-size:12px;box-sizing:border-box">
+        <div id="tp-existing" style="font-size:10px;color:#6e7681;margin-top:3px"></div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:#8b949e;margin-bottom:14px">Entry price: <span id="sl-entry-display" style="color:#e6edf3;font-family:monospace"></span></div>
+    <div id="sl-dialog-msg" style="font-size:11px;min-height:16px;margin-bottom:12px"></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeSlDialog()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:13px">Cancel</button>
+      <button onclick="saveSlTp()" style="background:#1f6feb;border:1px solid #388bfd;color:#fff;padding:7px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Save</button>
+    </div>
+  </div>
+</div>
 
 <script>
   // ── State ──────────────────────────────────────────────────────────────
@@ -1312,25 +1355,42 @@
         const dealId = pos.dealId || '—';
         const dealIdShort = dealId.length > 14 ? dealId.substring(0, 14) + '…' : dealId;
         const pnlColor = pnl > 0 ? '#3fb950' : pnl < 0 ? '#f85149' : '#8b949e';
-        return `<tr>
+        const entry = pos.level ?? pos.openLevel ?? 0;
+
+        const sl = pos.stopLevel ?? null;
+        const tp = pos.limitLevel ?? null;
+        const slPct = sl && entry ? Math.abs((sl - entry) / entry * 100).toFixed(2) : null;
+        const tpPct = tp && entry ? Math.abs((tp - entry) / entry * 100).toFixed(2) : null;
+        const slCell = sl
+          ? `<span style="color:#f85149;font-family:monospace;font-size:12px">${fmt(sl,3)}</span><br><span style="font-size:10px;color:#6e7681">${slPct}% away</span>`
+          : `<span style="color:#d29922;font-size:11px">⚠ Not set</span>`;
+        const tpCell = tp
+          ? `<span style="color:#3fb950;font-family:monospace;font-size:12px">${fmt(tp,3)}</span><br><span style="font-size:10px;color:#6e7681">${tpPct}% away</span>`
+          : `<span style="color:#6e7681;font-size:11px">—</span>`;
+
+        return `<tr id="cap-row-${dealId}">
           <td><strong>${name}</strong><br><span style="color:#6e7681;font-size:10px">${epic}</span></td>
           <td>${dir === 'BUY' ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>'}</td>
           <td>${pos.size ?? pos.dealSize ?? '—'}</td>
-          <td style="font-family:monospace">${fmt(pos.level ?? pos.openLevel, 3)}</td>
+          <td style="font-family:monospace">${fmt(entry, 3)}</td>
           <td style="font-family:monospace">${fmt(mkt.bid ?? mkt.offer, 3)}</td>
           <td style="font-weight:600;color:${pnlColor}">${pnl != null ? (pnl >= 0 ? '+' : '') + fmt(pnl, 2) : '—'}</td>
+          <td id="sl-cell-${dealId}">${slCell}</td>
+          <td id="tp-cell-${dealId}">${tpCell}</td>
           <td style="font-size:10px;color:#6e7681" title="${dealId}">${dealIdShort}</td>
-          <td style="white-space:nowrap">
+          <td style="white-space:nowrap;min-width:170px">
             <button class="pos-btn" onclick="closeCapitalPosition('${dealId}','${name}')"
               style="background:#3d0f0f;border-color:#da3633;color:#f85149">✕ Close</button>
             <button class="pos-btn" onclick="prefillManual('capital','${epic}','BUY')"
               style="background:#0f3d1a;border-color:#238636;color:#3fb950">＋ More</button>
+            <button class="pos-btn" onclick="openSlDialog('${dealId}','${name}',${entry},${sl ?? 0},${tp ?? 0})"
+              style="background:#1a2d3d;border-color:#1f6feb;color:#58a6ff">🛡 SL/TP</button>
           </td>
         </tr>`;
       }).join('');
     } catch(e) {
       const tb = document.getElementById('capitalOpenBody');
-      if (tb) tb.innerHTML = '<tr class="empty-row"><td colspan="8">Could not load — check Capital.com session</td></tr>';
+      if (tb) tb.innerHTML = '<tr class="empty-row"><td colspan="10">Could not load — check Capital.com session</td></tr>';
       updateCapPie([]);
     }
   }
@@ -1586,6 +1646,106 @@
 
     document.getElementById('orderHistoryCount').textContent = totalCount + ' entries';
   }
+
+  // ── SL/TP Dialog ──────────────────────────────────────────────────────
+  let _slDealId = null, _slEntry = 0;
+
+  function openSlDialog(dealId, name, entry, currentSl, currentTp) {
+    _slDealId = dealId;
+    _slEntry  = entry;
+    const overlay = document.getElementById('sl-dialog-overlay');
+    overlay.style.display = 'flex';
+    document.getElementById('sl-dialog-name').textContent = name + ' — ' + dealId;
+    document.getElementById('sl-entry-display').textContent = fmt(entry, 3);
+    document.getElementById('sl-dialog-msg').textContent = '';
+
+    // Prefill existing SL
+    const slIn = document.getElementById('sl-price-input');
+    const slPctIn = document.getElementById('sl-pct-input');
+    const slExist = document.getElementById('sl-existing');
+    if (currentSl > 0) {
+      slIn.value = currentSl;
+      slPctIn.value = Math.abs((currentSl - entry) / entry * 100).toFixed(2);
+      slExist.textContent = 'Current: ' + fmt(currentSl, 3);
+    } else {
+      slIn.value = ''; slPctIn.value = ''; slExist.textContent = 'Currently not set';
+    }
+
+    // Prefill existing TP
+    const tpIn = document.getElementById('tp-price-input');
+    const tpPctIn = document.getElementById('tp-pct-input');
+    const tpExist = document.getElementById('tp-existing');
+    if (currentTp > 0) {
+      tpIn.value = currentTp;
+      tpPctIn.value = Math.abs((currentTp - entry) / entry * 100).toFixed(2);
+      tpExist.textContent = 'Current: ' + fmt(currentTp, 3);
+    } else {
+      tpIn.value = ''; tpPctIn.value = ''; tpExist.textContent = 'Optional';
+    }
+  }
+
+  function closeSlDialog() {
+    document.getElementById('sl-dialog-overlay').style.display = 'none';
+    _slDealId = null; _slEntry = 0;
+  }
+
+  function slPriceToPercent() {
+    const price = parseFloat(document.getElementById('sl-price-input').value);
+    if (!isNaN(price) && _slEntry > 0)
+      document.getElementById('sl-pct-input').value = Math.abs((price - _slEntry) / _slEntry * 100).toFixed(2);
+  }
+  function slPercentToPrice() {
+    const pct = parseFloat(document.getElementById('sl-pct-input').value);
+    if (!isNaN(pct) && _slEntry > 0) {
+      // For SL: below entry for LONG (price - pct%), above for SHORT
+      document.getElementById('sl-price-input').value = (_slEntry * (1 - pct / 100)).toFixed(3);
+    }
+  }
+  function tpPriceToPercent() {
+    const price = parseFloat(document.getElementById('tp-price-input').value);
+    if (!isNaN(price) && _slEntry > 0)
+      document.getElementById('tp-pct-input').value = Math.abs((price - _slEntry) / _slEntry * 100).toFixed(2);
+  }
+  function tpPercentToPrice() {
+    const pct = parseFloat(document.getElementById('tp-pct-input').value);
+    if (!isNaN(pct) && _slEntry > 0)
+      document.getElementById('tp-price-input').value = (_slEntry * (1 + pct / 100)).toFixed(3);
+  }
+
+  async function saveSlTp() {
+    const slPrice = parseFloat(document.getElementById('sl-price-input').value) || 0;
+    const tpPrice = parseFloat(document.getElementById('tp-price-input').value) || 0;
+    const msg = document.getElementById('sl-dialog-msg');
+
+    if (slPrice <= 0 && tpPrice <= 0) {
+      msg.style.color = '#f85149'; msg.textContent = 'Enter at least a stop loss price'; return;
+    }
+
+    msg.style.color = '#8b949e'; msg.textContent = 'Saving…';
+    try {
+      const body = {};
+      if (slPrice > 0) body.stopLevel  = slPrice;
+      if (tpPrice > 0) body.limitLevel = tpPrice;
+
+      const r = await fetch(`/api/trade/capital/${encodeURIComponent(_slDealId)}/risk`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.error) { msg.style.color = '#f85149'; msg.textContent = d.error; return; }
+      msg.style.color = '#3fb950';
+      msg.textContent = `Saved — SL: ${slPrice > 0 ? fmt(slPrice,3) : '—'}  TP: ${tpPrice > 0 ? fmt(tpPrice,3) : '—'}`;
+      setTimeout(() => { closeSlDialog(); loadCapitalPositions(); }, 1200);
+    } catch(e) {
+      msg.style.color = '#f85149'; msg.textContent = e.message;
+    }
+  }
+
+  // close dialog on overlay click
+  document.getElementById('sl-dialog-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('sl-dialog-overlay')) closeSlDialog();
+  });
 
   // ── Scheduled Orders ──────────────────────────────────────────────────
   async function loadScheduledOrders() {

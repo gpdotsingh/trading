@@ -3,6 +3,7 @@ package com.trading.ibcfd.service;
 import com.trading.ibcfd.config.SaxoConfig;
 import com.trading.ibcfd.model.OrderRequest;
 import com.trading.ibcfd.model.OrderResponse;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class OrderService {
      *   2. Build order body with AccountKey, AssetType, Uic, BuySell, Amount, OrderType
      *   3. For LMT orders include OrderPrice; for STP include StopLimitPrice
      */
+    @Retry(name = "brokerApi")
     @SuppressWarnings("unchecked")
     public OrderResponse placeOrder(OrderRequest req) {
         String assetType = req.getAssetType();
@@ -114,6 +116,7 @@ public class OrderService {
      * Find the active StopIfTraded order for a symbol and update its price.
      * Used by DynamicStopLossService when the trailing stop moves.
      */
+    @Retry(name = "brokerApi")
     @SuppressWarnings("unchecked")
     public void updateStopOrder(String symbol, String assetType, double newStopPrice) {
         int uic = instrumentService.findUic(symbol, assetType);

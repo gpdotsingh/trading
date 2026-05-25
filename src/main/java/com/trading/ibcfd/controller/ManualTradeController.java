@@ -117,6 +117,34 @@ public class ManualTradeController {
         return ResponseEntity.ok(info);
     }
 
+    /**
+     * PUT /api/trade/capital/{dealId}/risk
+     * Set or update stop loss and/or take profit on an existing Capital.com position.
+     * Body: { "stopLevel": 4400.0, "limitLevel": 4800.0 }
+     * Omit a field (or set to 0) to leave it unchanged.
+     */
+    @PutMapping("/capital/{dealId}/risk")
+    @Operation(summary = "Set stop loss and/or take profit on a Capital.com position")
+    public ResponseEntity<Object> setCapitalRisk(@PathVariable String dealId,
+                                                 @RequestBody Map<String, Object> req) {
+        double stopLevel  = toDouble(req.get("stopLevel"));
+        double limitLevel = toDouble(req.get("limitLevel"));
+        if (stopLevel <= 0 && limitLevel <= 0)
+            return ResponseEntity.badRequest().body(Map.of("error", "Provide stopLevel and/or limitLevel"));
+        try {
+            capitalComService.updatePosition(dealId, stopLevel, limitLevel);
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("dealId", dealId);
+            if (stopLevel  > 0) resp.put("stopLevel",  stopLevel);
+            if (limitLevel > 0) resp.put("limitLevel", limitLevel);
+            resp.put("status", "updated");
+            log.info("Risk updated for Capital dealId={} SL={} TP={}", dealId, stopLevel, limitLevel);
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("error", e.getMessage()));
+        }
+    }
+
     /** DELETE /api/trade/capital/{dealId} — close a Capital.com position */
     @DeleteMapping("/capital/{dealId}")
     @Operation(summary = "Close a Capital.com position by dealId")

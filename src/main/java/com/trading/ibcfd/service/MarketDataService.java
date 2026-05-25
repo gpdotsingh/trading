@@ -2,6 +2,8 @@ package com.trading.ibcfd.service;
 
 import com.trading.ibcfd.config.SaxoConfig;
 import com.trading.ibcfd.model.MarketPrice;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,9 +29,17 @@ public class MarketDataService {
      * Fetches a live bid/ask price snapshot for a single CFD instrument.
      * GET /trade/v1/infoprices/?AssetType={assetType}&Uic={uic}&FieldGroups=Quote
      */
+    @Retry(name = "brokerApi")
+    @CircuitBreaker(name = "brokerApi", fallbackMethod = "getMarketPriceFallback")
     public MarketPrice getMarketPrice(String symbol, String assetType) {
         int uic = instrumentService.findUic(symbol, assetType);
         return fetchPrice(symbol, assetType, uic);
+    }
+
+    public MarketPrice getMarketPriceFallback(String symbol, String assetType, Exception ex) {
+        log.warn("Circuit open for market price {}/{} — returning empty price: {}", symbol, assetType, ex.getMessage());
+        return MarketPrice.builder().symbol(symbol).assetType(assetType).bid(0).ask(0).mid(0)
+                .timestamp(java.time.Instant.now().toString()).build();
     }
 
     /**
@@ -42,6 +52,8 @@ public class MarketDataService {
      * @param assetType e.g. "CfdOnStock"
      * @return map of symbol -> MarketPrice
      */
+    @Retry(name = "brokerApi")
+    @CircuitBreaker(name = "brokerApi", fallbackMethod = "getBulkPricesFallback")
     @SuppressWarnings("unchecked")
     public Map<String, MarketPrice> getBulkPrices(String symbols, String assetType) {
         List<String> symbolList = Arrays.stream(symbols.split(","))
@@ -115,6 +127,11 @@ public class MarketDataService {
                     .build());
         }
         return result;
+    }
+
+    public Map<String, MarketPrice> getBulkPricesFallback(String symbols, String assetType, Exception ex) {
+        log.warn("Circuit open for bulk prices {}/{} — returning empty map: {}", symbols, assetType, ex.getMessage());
+        return Map.of();
     }
 
     @SuppressWarnings("unchecked")
