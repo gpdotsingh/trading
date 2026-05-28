@@ -38,6 +38,7 @@
 /Users/gauravsingh/study/stockmarket/ib-cfd-api/src/main/java/com/trading/ibcfd/model/TrendSpiderAlert.java
 /Users/gauravsingh/study/stockmarket/ib-cfd-api/src/main/java/com/trading/ibcfd/service/AnalyticsService.java
 /Users/gauravsingh/study/stockmarket/ib-cfd-api/src/main/java/com/trading/ibcfd/service/CapitalComService.java
+/Users/gauravsingh/study/stockmarket/ib-cfd-api/src/main/java/com/trading/ibcfd/service/CapitalPriceStreamingService.java
 /Users/gauravsingh/study/stockmarket/ib-cfd-api/src/main/java/com/trading/ibcfd/service/CapitalSessionManager.java
 /Users/gauravsingh/study/stockmarket/ib-cfd-api/src/main/java/com/trading/ibcfd/service/DynamicStopLossService.java
 /Users/gauravsingh/study/stockmarket/ib-cfd-api/src/main/java/com/trading/ibcfd/service/InstrumentCatalogService.java

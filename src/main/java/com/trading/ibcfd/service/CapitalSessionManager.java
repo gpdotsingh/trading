@@ -61,6 +61,9 @@ public class CapitalSessionManager {
         log.info("Capital.com session created (demo={})", config.isDemo());
     }
 
+    public String getCst()           { return cst.get(); }
+    public String getSecurityToken() { return securityToken.get(); }
+
     public void ensureSession() {
         boolean missing  = cst.get() == null || securityToken.get() == null;
         boolean expired  = (System.currentTimeMillis() - sessionCreatedAt.get()) > SESSION_TTL_MS;
